@@ -1158,8 +1158,24 @@ class PlaceOrderSaga {
 | **Complexity** | Grows with number of services | Stays in one class |
 | **Best for** | Simple flows, few steps | Complex flows, many steps |
 
+### Downsides of Each
+
+**Choreography** is loosely coupled in code (services don't reference each other) but **tightly coupled in knowledge**. Every service needs to know which events to listen for, what compensating actions to run, and the implicit order of the flow. The full saga logic is invisible, spread across many subscribers in different services. Nobody can look at one place and see the complete picture.
+
+**Orchestration** is the opposite. The orchestrator is **tightly coupled to every service** (it calls them all) but the flow is **visible in one place**. If any service changes its API, the orchestrator breaks. And if the orchestrator goes down, all sagas stop.
+
+| Downside | Choreography | Orchestration |
+|---|---|---|
+| **Coupling type** | Implicit knowledge coupling | Explicit code coupling |
+| **Debugging** | Hard: trace events across services | Easy: read one class |
+| **Single point of failure** | No | Yes: the orchestrator |
+| **Adding a step** | Add a subscriber, but who sees the full flow? | Edit one class, but it grows |
+| **Circular dependencies** | Possible: A reacts to B reacts to A | Not possible |
+| **Testing** | Hard: simulate event chains | Easier: mock services, test orchestrator |
+| **Scaling** | Each service scales independently | Orchestrator can bottleneck |
+
 <div class="callout tip">
-  <strong>Start with orchestration</strong> for complex flows — it's easier to understand and debug. Use choreography when services are truly independent and the flow is simple.
+  <strong>The real question:</strong> can someone new to the team understand the flow? With 3 steps, choreography is fine. With 8 steps and branching failure paths, orchestration is much easier to reason about. Start with orchestration for complex flows.
 </div>
 
 ## Putting It All Together
