@@ -572,7 +572,47 @@ class OrderSummaryQuery {
 }
 ```
 
-### Trade-offs
+### CQRS Complexity Levels
+
+CQRS doesn't require events, Kafka, or separate databases. At its simplest, it's just "use a different code path for reads than writes":
+
+| Level | What it looks like | Events? | Separate DB? | Eventual consistency? |
+|---|---|---|---|---|
+| **1. Separate query classes** | Different service for reads vs writes, same DB | No | No | No |
+| **2. Denormalized read tables** | Read tables updated in same transaction | Optional | No | No |
+| **3. Separate read stores** | Events sync to Elasticsearch/Redis/etc | Yes | Yes | Yes |
+| **4. Event sourcing + CQRS** | Events are source of truth, read models are projections | Yes | Yes | Yes |
+
+<span class="label label-ts">TypeScript</span> — Level 1 (simplest CQRS, no events):
+
+```typescript
+// Write: domain model with business rules
+class OrderService {
+  async placeOrder(cmd: PlaceOrderCommand) {
+    const order = new Order(cmd.customerId, cmd.items);
+    order.validate();
+    await this.orderRepo.save(order);
+  }
+}
+
+// Read: separate query class, same database, optimized SQL
+class OrderQueryService {
+  async getOrderSummaries(customerId: string) {
+    return db.query(`
+      SELECT o.id, o.total, c.name, COUNT(oi.id) as items
+      FROM orders o JOIN customers c ON ... JOIN order_items oi ON ...
+      WHERE o.customer_id = $1 GROUP BY ...
+    `, [customerId]);
+  }
+}
+// That's CQRS. Two code paths. No events, no Kafka, one database.
+```
+
+<div class="callout tip">
+  <strong>Most apps only need Level 1 or 2.</strong> Separate your read and write code paths first. Add denormalized tables when JOINs get slow. Add events and separate databases only when you hit a specific scaling problem. Don't start at Level 4.
+</div>
+
+### Other Trade-offs
 
 | Benefit | Cost |
 |---|---|
