@@ -304,6 +304,174 @@ for event in stream.consume("orders", group="analytics"):
 | Distribute work across workers | Queue | Competing consumers |
 | Audit trail / event sourcing | Stream | Append-only log |
 
+### Building a Queue-Driven System
+
+Queue-driven architecture is about **task distribution**. A producer puts work on a queue, workers pick it up and process it. The queue acts as a buffer between the producer and consumers.
+
+<span class="label label-ts">TypeScript</span> - SQS example:
+
+```typescript
+// Producer: order service puts work on the queue after saving
+class OrderService {
+  async placeOrder(order: Order) {
+    await this.orderRepo.save(order);
+    await this.res.status(201).json(order); // respond to user immediately
+
+    // Queue background tasks (user doesn't wait for these)
+    await sqs.sendMessage({
+      QueueUrl: EMAIL_QUEUE_URL,
+      MessageBody: JSON.stringify({ type: "send_confirmation", orderId: order.id })
+    });
+    await sqs.sendMessage({
+      QueueUrl: INVOICE_QUEUE_URL,
+      MessageBody: JSON.stringify({ type: "generate_invoice", orderId: order.id })
+    });
+  }
+}
+
+// Consumer: email worker runs separately, processes one message at a time
+async function emailWorker() {
+  while (true) {
+    const result = await sqs.receiveMessage({
+      QueueUrl: EMAIL_QUEUE_URL,
+      WaitTimeSeconds: 20  // long polling, waits for messages
+    });
+
+    for (const message of result.Messages ?? []) {
+      const task = JSON.parse(message.Body);
+      await sendConfirmationEmail(task.orderId);
+      await sqs.deleteMessage({
+        QueueUrl: EMAIL_QUEUE_URL,
+        ReceiptHandle: message.ReceiptHandle  // acknowledge: done, remove it
+      });
+    }
+  }
+}
+```
+
+Key characteristics:
+- **Buffering**: if the email service is slow or down, messages pile up in the queue and get processed when it recovers
+- **Scaling**: run 10 email workers and they compete for messages. Each message goes to one worker.
+- **Retry**: if a worker crashes before deleting the message, it becomes visible again after a timeout and another worker picks it up
+- **Dead letter queue**: messages that fail repeatedly get moved to a separate queue for investigation
+
+```text
+Order Service → [ Email Queue ] → Email Worker 1
+                                → Email Worker 2  (competing)
+                                → Email Worker 3
+
+              → [ Invoice Queue ] → Invoice Worker 1
+                                  → Invoice Worker 2
+```
+
+### Building an Event Stream-Driven System
+
+Stream-driven architecture is about **broadcasting facts**. A producer appends events to a log. Multiple consumers read from the log independently, each at their own pace.
+
+<span class="label label-ts">TypeScript</span> - Kafka example:
+
+```typescript
+// Producer: order service publishes an event (a fact about what happened)
+class OrderService {
+  async placeOrder(order: Order) {
+    await this.orderRepo.save(order);
+
+    // Publish one event, multiple services will consume it
+    await kafka.producer.send({
+      topic: "order-events",
+      messages: [{
+        key: order.id,  // ensures all events for same order go to same partition
+        value: JSON.stringify({
+          type: "OrderPlaced",
+          orderId: order.id,
+          customerId: order.customerId,
+          items: order.items,
+          total: order.total,
+          timestamp: new Date()
+        })
+      }]
+    });
+  }
+}
+
+// Consumer 1: email service (consumer group "email")
+const emailConsumer = kafka.consumer({ groupId: "email-service" });
+await emailConsumer.subscribe({ topic: "order-events" });
+await emailConsumer.run({
+  eachMessage: async ({ message }) => {
+    const event = JSON.parse(message.value.toString());
+    if (event.type === "OrderPlaced") {
+      await sendConfirmationEmail(event.customerId, event.orderId);
+    }
+  }
+});
+
+// Consumer 2: analytics service (consumer group "analytics")
+// Reads the SAME events independently
+const analyticsConsumer = kafka.consumer({ groupId: "analytics-service" });
+await analyticsConsumer.subscribe({ topic: "order-events" });
+await analyticsConsumer.run({
+  eachMessage: async ({ message }) => {
+    const event = JSON.parse(message.value.toString());
+    if (event.type === "OrderPlaced") {
+      await trackRevenue(event.total);
+      await updateDashboard(event);
+    }
+  }
+});
+
+// Consumer 3: search indexer (consumer group "search")
+// Also reads the SAME events
+const searchConsumer = kafka.consumer({ groupId: "search-indexer" });
+await searchConsumer.subscribe({ topic: "order-events" });
+await searchConsumer.run({
+  eachMessage: async ({ message }) => {
+    const event = JSON.parse(message.value.toString());
+    if (event.type === "OrderPlaced") {
+      await elasticsearch.index({ index: "orders", id: event.orderId, body: event });
+    }
+  }
+});
+```
+
+Key characteristics:
+- **One event, many consumers**: publish once, three services each process it independently
+- **Persistence**: events stay in Kafka for days/weeks (configurable retention)
+- **Replay**: new service added next month? Subscribe from the beginning, process all historical events
+- **Ordering**: events with the same key (orderId) are guaranteed to arrive in order within a partition
+- **Consumer independence**: if analytics is slow, email and search are unaffected
+
+```text
+Order Service → [ Kafka: order-events ]
+                    │
+                    ├── Consumer Group "email"     → Email Service
+                    ├── Consumer Group "analytics"  → Analytics Service
+                    └── Consumer Group "search"     → Search Indexer
+
+Each group reads ALL events independently.
+Within a group, partitions are split across instances.
+```
+
+### Queue vs Stream: Side by Side
+
+The same scenario implemented both ways:
+
+```typescript
+// QUEUE approach: order service sends specific tasks to specific queues
+await emailQueue.send({ task: "send_confirmation", orderId: "123" });
+await invoiceQueue.send({ task: "generate_invoice", orderId: "123" });
+await analyticsQueue.send({ task: "track_order", orderId: "123" });
+// Order service knows about every downstream consumer. Adding a new one = change order service.
+
+// STREAM approach: order service publishes one event
+await kafka.publish("order-events", { type: "OrderPlaced", orderId: "123", ... });
+// Order service doesn't know who's listening. Adding a new consumer = deploy new service. Done.
+```
+
+<div class="callout tip">
+  <strong>Start with queues</strong> when you have simple background tasks (send email, generate PDF). Move to streams when multiple services need the same events, or when you need replay and audit capabilities. Many systems use both: queues for task processing, streams for event broadcasting.
+</div>
+
 ## Multiple Consumers and Idempotency
 
 When you scale a service to multiple instances, how do you prevent the same message being processed twice?
