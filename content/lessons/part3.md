@@ -1090,7 +1090,7 @@ OrderService                    PaymentService              InventoryService
 <span class="label label-ts">TypeScript</span>
 
 ```typescript
-// Each service listens and reacts
+// STEP 1: Payment service listens for new orders
 eventBus.subscribe("OrderPlaced", async (event) => {
   try {
     await paymentService.charge(event.customerId, event.total);
@@ -1100,6 +1100,7 @@ eventBus.subscribe("OrderPlaced", async (event) => {
   }
 });
 
+// STEP 2: Inventory listens for successful payment
 eventBus.subscribe("PaymentTaken", async (event) => {
   try {
     await inventoryService.reserve(event.orderId);
@@ -1109,10 +1110,18 @@ eventBus.subscribe("PaymentTaken", async (event) => {
   }
 });
 
-// Compensating actions
+// COMPENSATING ACTIONS — revert previous steps on failure
+
+// Payment failed? Nothing to undo (payment didn't happen), just cancel the order
+eventBus.subscribe("PaymentFailed", async (event) => {
+  await orderService.cancel(event.orderId);  // undo step 0
+});
+
+// Stock reservation failed? Undo payment, then cancel order
 eventBus.subscribe("StockReserveFailed", async (event) => {
-  await paymentService.refund(event.orderId);
-  await orderService.cancel(event.orderId);
+  await paymentService.refund(event.orderId);  // undo step 1
+  await orderService.cancel(event.orderId);     // undo step 0
+});
 });
 ```
 
