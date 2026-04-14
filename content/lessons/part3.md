@@ -657,6 +657,37 @@ class OrderQueryService {
 // That's CQRS. Two code paths. No events, no Kafka, one database.
 ```
 
+Compare with the non-CQRS version — one service does everything:
+
+```typescript
+// Without CQRS — reads and writes in one service
+class OrderService {
+  // Writes — use domain model
+  async placeOrder(cmd: PlaceOrderCommand) {
+    const order = new Order(cmd.customerId, cmd.items);
+    order.validate();
+    await this.orderRepo.save(order);
+  }
+  async cancelOrder(id: string) {
+    const order = await this.orderRepo.findById(id);
+    order.cancel();
+    await this.orderRepo.save(order);
+  }
+
+  // Reads — raw SQL, don't use domain model at all
+  async getOrderSummaries(customerId: string) { /* JOIN 3 tables */ }
+  async getDashboardStats() { /* JOIN 5 tables, aggregate */ }
+  async searchOrders(filters: SearchFilters) { /* complex WHERE */ }
+  async getTopProducts(period: string) { /* GROUP BY, ORDER BY */ }
+
+  // Service is now half business logic, half reporting queries
+}
+```
+
+<div class="callout info">
+  <strong>The non-CQRS service works fine until reads get complex.</strong> When you have 4+ read methods with complex JOINs that don't use the domain model, the service becomes half business logic, half reporting. CQRS Level 1 just splits them into two classes — write service stays focused on rules, query service stays focused on fast reads.
+</div>
+
 <div class="callout tip">
   <strong>Most apps only need Level 1 or 2.</strong> Separate your read and write code paths first. Add denormalized tables when JOINs get slow. Add events and separate databases only when you hit a specific scaling problem. Don't start at Level 4.
 </div>
