@@ -288,18 +288,50 @@ CQRS separates your system into two sides: one optimized for **writing** data, a
 
 In most apps, reads vastly outnumber writes. But the data model that's good for writing (normalized, consistent) is often bad for reading (requires joins, slow queries). CQRS lets you optimize each side independently.
 
+### The Problem CQRS Solves
+
+Without CQRS, your query has to JOIN multiple tables every time someone views a page:
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+// Without CQRS — one database, queries do all the work
+async getOrderSummaries(customerId: string) {
+  return db.query(`
+    SELECT o.id, o.total, o.status, o.created_at,
+           c.name as customer_name,
+           COUNT(oi.id) as item_count
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE o.customer_id = $1
+    GROUP BY o.id, c.name
+    ORDER BY o.created_at DESC
+  `, [customerId]);
+  // This JOIN runs every time someone views the page. Slow at scale.
+}
+```
+
+With CQRS, the read side is **pre-computed** — the work happens once when data changes, not every time someone reads it.
+
 ### How It Works
 
 ```text
-                    ┌──────────────┐
-  Commands ────────→│  Write Model │──── events ────→ ┌──────────────┐
-  (create, update)  │ (normalized) │                  │  Read Model  │
-                    └──────────────┘                  │(denormalized)│
-                                                      └──────┬───────┘
-                                                             │
-  Queries ◄──────────────────────────────────────────────────┘
-  (list, search, dashboard)
+WITHOUT CQRS:
+  orders ──┐
+  customers ├──→ JOIN at query time ──→ UI
+  order_items ┘    (slow, every time)
+
+WITH CQRS:
+  Write DB (normalized)          Read DB (denormalized)
+  ┌─────────┐                    ┌──────────────────┐
+  │ orders  │                    │ order_summaries   │
+  │ items   │── event ──────────→│ (flat, pre-joined)│──→ UI
+  │ customers│  "OrderPlaced"    │ no joins needed   │   (fast)
+  └─────────┘                    └──────────────────┘
 ```
+
+The **write side** uses normalized tables (good for consistency and business rules). The **read side** uses a flat, denormalized table that's updated when events happen — so queries never need JOINs.
 
 <span class="label label-ts">TypeScript</span> — Write side:
 
