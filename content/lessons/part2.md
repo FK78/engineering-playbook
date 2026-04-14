@@ -50,6 +50,47 @@ quiz:
       - label: "over/under-fetching problems"
         terms: ["over-fetch", "overfetch", "under-fetch", "underfetch", "too much", "too many request", "n+1", "multiple request", "round trip"]
     answer: "When you have multiple client types needing different data, complex nested relationships, or want to avoid over/under-fetching. Common for mobile apps or as a gateway aggregating microservices."
+case_studies:
+  - title: "One API, Three Very Different Clients"
+    category: "Architecture Decision"
+    difficulty: "⭐⭐"
+    scenario: "SmartHome Inc. has a REST API with 50 endpoints serving three clients: a React web dashboard, a mobile app (iOS/Android), and IoT sensor devices with 256KB RAM. The mobile team complains that the GET /devices endpoint returns 2KB per device when they only need name and status (80 bytes). The IoT devices need sub-100ms responses with payloads under 512 bytes. The web team wants rich, nested data with device history and analytics. Last month, the team created 6 mobile-specific endpoints, and the API is becoming unmaintainable."
+    constraints: "8 engineers (3 backend, 3 frontend, 2 IoT firmware), 50 existing REST endpoints with external partner integrations, IoT devices cannot be updated once deployed, API must remain backward-compatible"
+    prompts:
+      - "Should you adopt GraphQL, create Backend-for-Frontend (BFF) services, or add field selection to your REST API? What factors drive this decision?"
+      - "The IoT devices have severe constraints — tiny payloads, no ability to update firmware. How does this affect your API strategy?"
+      - "How do you handle the transition without breaking the 50 existing endpoints that external partners depend on?"
+      - "What are the operational costs of each approach? Consider monitoring, debugging, and team cognitive load."
+    approaches:
+      - name: "GraphQL Gateway"
+        description: "Introduce a GraphQL layer in front of the existing REST services. Web and mobile clients query GraphQL and request exactly the fields they need. IoT devices continue using a dedicated lightweight REST endpoint with minimal payloads. Keep existing REST endpoints for external partners."
+        trade_off: "Solves over-fetching elegantly for web and mobile, and the schema serves as living documentation. But adds a new technology to the stack, requires training the team, and GraphQL caching is harder than REST caching. IoT still needs a separate solution."
+      - name: "Backend-for-Frontend (BFF) Pattern"
+        description: "Create three thin API layers — one for web, one for mobile, one for IoT — each tailored to its client's needs. Each BFF calls the same underlying services but shapes the response differently. Web BFF returns rich nested data, mobile BFF returns compact payloads, IoT BFF returns binary-encoded minimal responses."
+        trade_off: "Each client gets exactly what it needs with no compromise. But you now maintain three API surfaces instead of one. Changes to underlying services may require updates to all three BFFs. Works best when each client has a dedicated team."
+      - name: "Sparse Fieldsets on Existing REST"
+        description: "Add a ?fields=name,status query parameter to existing REST endpoints, letting clients specify which fields to return. Add a ?include=history,analytics parameter for nested resources. IoT devices use fields to get minimal payloads. No new infrastructure needed."
+        trade_off: "Lowest effort — extends existing REST API without new services or technologies. But field selection logic adds complexity to every endpoint, doesn't solve deeply nested data needs well, and IoT payload size depends on JSON overhead (consider MessagePack for IoT)."
+  - title: "The Product That Means Everything"
+    category: "Architecture Decision"
+    difficulty: "⭐⭐⭐"
+    scenario: "GearUp is an e-commerce company with $40M annual revenue. Their single PostgreSQL database has a products table with 85 columns because three teams share it: Catalog (descriptions, images, SEO metadata, categories), Warehouse (weight, dimensions, shelf location, reorder threshold), and Pricing (base price, discount rules, tax category, regional pricing). Last quarter, the Pricing team's migration to add a currency_rules column broke the Warehouse team's inventory sync job, causing a 4-hour outage. Teams average 2 merge conflicts per week on the Product model. Feature delivery has slowed by 40% year-over-year."
+    constraints: "3 teams of 4 engineers each, shared PostgreSQL database with 2.3M product rows, 15 downstream services consume the products table via direct queries or CDC, must maintain referential integrity for orders"
+    prompts:
+      - "How would you split the monolithic Product into bounded contexts? What belongs to each context?"
+      - "15 downstream services query the products table directly. How do you migrate them without a big-bang cutover?"
+      - "How do the three contexts share data they all need (like product ID and name)? What's the communication pattern?"
+      - "What happens to existing JOINs between products and orders? How do you maintain referential integrity across contexts?"
+    approaches:
+      - name: "Separate Tables, Shared Database"
+        description: "Split the 85-column products table into three domain-specific tables (catalog_products, warehouse_products, pricing_products) in the same database, linked by product_id. Each team owns their table's schema. Create views that reconstruct the old table shape for backward compatibility with downstream consumers."
+        trade_off: "Lowest risk — no new infrastructure, referential integrity via foreign keys, and views provide backward compatibility. But teams still share a database, so deployment coupling remains. A bad migration by one team can still lock the shared database."
+      - name: "Separate Services with Event Sync"
+        description: "Extract each context into its own service with its own database. Catalog Service, Warehouse Service, and Pricing Service each own their data. When Catalog updates a product name, it publishes a ProductNameChanged event that Warehouse and Pricing consume to update their local copies."
+        trade_off: "Full team autonomy — each team deploys independently with no schema conflicts. But introduces eventual consistency (Warehouse might show an old product name briefly), requires event infrastructure (Kafka/SQS), and cross-context queries become harder. Migrating 15 downstream consumers is a major effort."
+      - name: "Modular Monolith with Internal APIs"
+        description: "Keep one deployable unit but enforce strict module boundaries. Each team's code lives in a separate module with a defined internal API. The Product model is split into three module-specific models. Cross-module access goes through service interfaces, never direct table access. A shared kernel contains only product_id and name."
+        trade_off: "Eliminates merge conflicts and enforces boundaries without distributed systems complexity. But requires tooling to enforce module boundaries (linter rules, architecture tests). Doesn't solve the single-database bottleneck if one team's queries are slow."
 ---
 
 ## REST Fundamentals
@@ -518,3 +559,7 @@ class ShippingCustomerAdapter {
 ## Check Your Understanding
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

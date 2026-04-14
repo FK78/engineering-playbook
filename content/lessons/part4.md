@@ -50,6 +50,47 @@ quiz:
       - label: "extract services later when needed"
         terms: ["extract", "later", "when needed", "grow into", "split when", "boundary", "modular monolith"]
     answer: "Start with a well-structured monolith. 12 microservices for 3 developers means more time on infrastructure than features. Microservices add network complexity, deployment overhead, and distributed debugging challenges. Build a modular monolith with clear boundaries, then extract services when you have a proven need (scale, team size, independent deployment)."
+case_studies:
+  - title: "The Cascading Failure"
+    category: "Incident Response"
+    difficulty: "⭐⭐⭐"
+    scenario: "GlobalMart is an e-commerce platform serving 10 million daily active users across 12 countries. Last Tuesday at 2:15 PM UTC, the Recommendation Service (which suggests 'You might also like...' products) started returning 500 errors due to a corrupted ML model deployment. Within 3 minutes, product pages began failing entirely — even though recommendations are a non-critical feature. The Product Detail Page service calls Recommendations synchronously and has no timeout configured, so threads piled up waiting for responses. By 2:25 PM, the Product service was unresponsive, which cascaded to Search, Cart, and Checkout. The site was fully down for 47 minutes, costing an estimated $2.1M in lost sales."
+    constraints: "10M daily users, 23 microservices, peak traffic of 45,000 requests/second, 99.95% uptime SLA ($50K penalty per hour of downtime), must implement fixes without a full architecture rewrite, 3-week deadline for initial resilience improvements"
+    prompts:
+      - "What specific resilience patterns would have prevented the Recommendation Service failure from cascading? Where exactly would you implement each one?"
+      - "The Product Detail Page treats recommendations as required data. How do you redesign this so non-critical features degrade gracefully?"
+      - "How do you set appropriate timeouts and circuit breaker thresholds? What data do you need to make these decisions?"
+      - "Once you've implemented resilience patterns, how do you verify they actually work? How do you test for cascading failures before they happen in production?"
+    approaches:
+      - name: "Circuit Breakers with Graceful Degradation"
+        description: "Wrap every inter-service call in a circuit breaker. When the Recommendation Service fails, the circuit opens and the Product Detail Page renders without recommendations (showing a static 'Popular Products' fallback from cache). Add timeouts (e.g., 500ms) to all downstream calls. Implement bulkheads so each downstream dependency gets its own thread pool — a slow Recommendations call can't exhaust threads needed for Pricing or Inventory."
+        trade_off: "Directly addresses the root cause of the cascading failure. Implementation is straightforward with libraries like Resilience4j or opossum. But requires auditing all 23 services to identify every synchronous dependency, classifying each as critical vs. non-critical, and designing fallbacks for each. Timeouts and thresholds need tuning based on real traffic data."
+      - name: "Async-First Architecture"
+        description: "Redesign the Product Detail Page to fetch non-critical data (recommendations, reviews, recently viewed) asynchronously via the frontend. The backend returns core product data immediately; the UI loads supplementary sections independently via separate API calls. If any supplementary call fails, that section shows a placeholder."
+        trade_off: "Eliminates backend cascading entirely for non-critical features — the Product service never calls Recommendations at all. Improves perceived performance (core content loads faster). But requires frontend changes across all clients (web, mobile, apps), increases the number of API calls per page load, and shifts complexity to the client. Doesn't help with backend-to-backend cascading for critical paths."
+      - name: "Service Mesh with Automatic Resilience"
+        description: "Deploy a service mesh (Istio/Linkerd) that handles timeouts, retries, circuit breaking, and traffic management at the infrastructure level. Configure resilience policies in YAML rather than in application code. Add automatic canary deployments so a corrupted ML model is caught before full rollout."
+        trade_off: "Applies resilience uniformly across all 23 services without changing application code. Canary deployments prevent bad deployments from reaching production. But a service mesh adds significant operational complexity — proxy sidecars increase latency and resource usage, debugging becomes harder (is it the app or the mesh?), and the team needs to learn a new infrastructure layer. Overkill if only a few critical paths need protection."
+  - title: "The Invisible Bottleneck"
+    category: "Incident Response"
+    difficulty: "⭐⭐"
+    scenario: "FinFlow runs a payment processing platform with 15 microservices. The checkout flow touches 7 of them: API Gateway → Auth → Cart → Pricing → Inventory → Payment → Confirmation. Users report that checkout takes 6-12 seconds, but when engineers check individual service dashboards, each service reports p95 latency under 200ms. There's no distributed tracing — each service logs independently to its own CloudWatch log group. The team has spent 3 weeks adding more logging to individual services without finding the bottleneck. Meanwhile, checkout abandonment has increased 25%."
+    constraints: "15 microservices on ECS, 7 engineers across 3 teams, each team owns different services, no existing tracing infrastructure, 200,000 checkouts per day, must diagnose within 1 week and fix within 3 weeks"
+    prompts:
+      - "Why can individual services appear fast while the end-to-end flow is slow? What are the possible causes that per-service metrics would miss?"
+      - "How would you implement distributed tracing across 15 services? What's the minimum viable setup to diagnose this specific problem?"
+      - "Once you have traces, what patterns would you look for? How do you distinguish between sequential bottlenecks, network latency, and queuing delays?"
+      - "How do you make observability a permanent part of the platform so this class of problem is caught early in the future?"
+    approaches:
+      - name: "Correlation ID + Centralized Logging"
+        description: "Generate a unique trace ID at the API Gateway and propagate it via HTTP headers through all downstream calls. Each service includes this trace ID in every log line. Aggregate all logs into a single CloudWatch log group (or ELK/Loki). Filter by trace ID to see the full request timeline. Add timestamps to identify gaps between service calls."
+        trade_off: "Minimal infrastructure change — just add a header and a log field to each service. Can be implemented in a few days with middleware. But manual log analysis is tedious, you can't visualize the call graph, and you won't see network-level delays (time between one service sending a response and the next service receiving it). Good enough to diagnose the immediate problem."
+      - name: "OpenTelemetry with Distributed Tracing"
+        description: "Instrument all 15 services with OpenTelemetry SDK. Each service creates spans for incoming requests and outgoing calls. Traces are exported to AWS X-Ray (or Jaeger/Tempo). The trace waterfall visualization shows exactly where time is spent — including network hops, queue wait times, and sequential vs. parallel calls."
+        trade_off: "Full visibility into the request lifecycle with visual waterfall diagrams. Can identify network latency, serialization overhead, and connection pool exhaustion that logs alone would miss. But instrumenting 15 services takes 2-3 weeks, adds a dependency on tracing infrastructure, and introduces slight performance overhead (typically <2%). Requires buy-in from all 3 teams."
+      - name: "Synthetic Transaction Profiling"
+        description: "Build a synthetic checkout transaction that runs every 60 seconds, measuring end-to-end latency and latency at each hop. Use a simple script that calls each service in sequence, recording timestamps. Compare synthetic results with real user traffic to isolate whether the issue is load-dependent. Add network-level monitoring (VPC flow logs, ECS task metrics) to check for infrastructure bottlenecks."
+        trade_off: "Can be built in days without modifying any service code. Quickly reveals whether the problem is load-dependent or constant. But synthetic transactions may not reproduce the exact conditions causing slowness (e.g., specific product combinations, cache misses). Doesn't provide per-request visibility for real user traffic. Best as a quick diagnostic tool, not a long-term observability solution."
 ---
 
 ## CAP Theorem
@@ -603,3 +644,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
 ## Check Your Understanding
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

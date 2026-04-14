@@ -324,3 +324,158 @@ async function checkAll() {
 function revealAll() {
   window._quizQuestions.forEach((_, i) => revealOne(i));
 }
+
+// ===== CASE STUDY ENGINE =====
+
+function initCaseStudies(studies) {
+  const container = document.getElementById('case-studies');
+  if (!container || !studies) return;
+
+  studies.forEach((study, i) => {
+    const div = document.createElement('div');
+    div.className = 'case-study-card';
+    div.innerHTML = `
+      <div class="case-study-header">
+        <span class="case-study-badge">${study.category || 'Case Study'}</span>
+        <span class="case-study-difficulty">${study.difficulty || '⭐⭐'}</span>
+      </div>
+      <h4>${study.title}</h4>
+      <div class="case-study-scenario">${study.scenario}</div>
+      ${study.constraints ? `<div class="case-study-constraints"><strong>Constraints:</strong> ${study.constraints}</div>` : ''}
+      <div class="case-study-prompts">
+        ${study.prompts.map(p => `<div class="case-study-prompt">💡 ${p}</div>`).join('')}
+      </div>
+      <textarea id="case-answer-${i}" placeholder="Describe your approach, reasoning, and trade-offs..."></textarea>
+      <br>
+      <button class="quiz-btn" onclick="evaluateCaseStudy(${i})">Evaluate My Approach</button>
+      <button class="quiz-btn reveal" onclick="revealCaseApproaches(${i})">Show Possible Approaches</button>
+      <div class="case-study-feedback" id="case-feedback-${i}"></div>
+    `;
+    container.appendChild(div);
+  });
+
+  window._caseStudies = studies;
+}
+
+async function evaluateCaseStudy(i) {
+  const input = document.getElementById('case-answer-' + i).value;
+  const fb = document.getElementById('case-feedback-' + i);
+  const study = window._caseStudies[i];
+
+  if (!input.trim()) {
+    fb.className = 'case-study-feedback show';
+    fb.innerHTML = '<span style="color:#c62828;">Write your approach first!</span>';
+    return;
+  }
+
+  const apiKey = typeof getApiKey === 'function' ? getApiKey() : null;
+
+  if (apiKey) {
+    fb.className = 'case-study-feedback show';
+    fb.innerHTML = '<span style="opacity:0.6;">🤖 Evaluating your approach...</span>';
+
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: (typeof getModel === 'function' ? getModel() : "gpt-4o-mini"),
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: `You are evaluating a software architecture case study response. Assess the answer across four dimensions. Be encouraging but honest. Consider that there are multiple valid approaches.
+
+Respond in this exact JSON format:
+{
+  "business_insight": {"score": <0-10>, "feedback": "<1-2 sentences>"},
+  "creativity": {"score": <0-10>, "feedback": "<1-2 sentences>"},
+  "decision_making": {"score": <0-10>, "feedback": "<1-2 sentences>"},
+  "communication": {"score": <0-10>, "feedback": "<1-2 sentences>"},
+  "overall": <0-100>,
+  "strengths": ["strength 1", "strength 2"],
+  "improvements": ["suggestion 1", "suggestion 2"],
+  "summary": "<2-3 sentences of overall feedback>"
+}`
+            },
+            {
+              role: "user",
+              content: `Case Study: ${study.title}\n\nScenario: ${study.scenario}\n${study.constraints ? 'Constraints: ' + study.constraints : ''}\n\nPrompts to consider: ${study.prompts.join('; ')}\n\nPossible approaches for reference: ${study.approaches.map(a => a.name + ': ' + a.description).join('; ')}\n\nStudent's response:\n${input}`
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error(`API ${response.status}`);
+      const data = await response.json();
+      const text = data.choices[0].message.content.trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+
+      if (result) {
+        fb.innerHTML = renderCaseStudyFeedback(result);
+        fb.className = 'case-study-feedback show';
+        return;
+      }
+    } catch (e) {
+      console.error("AI evaluation failed:", e);
+    }
+  }
+
+  // Fallback: show approaches without AI scoring
+  fb.className = 'case-study-feedback show';
+  fb.innerHTML = `<p style="opacity:0.6;">Set an OpenAI API key (via the quiz settings above) for AI-powered evaluation of your approach.</p>` + renderApproaches(study);
+}
+
+function renderCaseStudyFeedback(result) {
+  const dims = [
+    { key: 'business_insight', label: '📊 Business Insight', color: '#1565c0' },
+    { key: 'creativity', label: '💡 Creativity', color: '#7b1fa2' },
+    { key: 'decision_making', label: '⚖️ Decision Making', color: '#2e7d32' },
+    { key: 'communication', label: '🗣️ Communication', color: '#e65100' }
+  ];
+
+  let html = `<div class="case-study-overall">Overall: <strong>${result.overall}%</strong></div>`;
+  html += '<div class="case-study-dimensions">';
+  for (const dim of dims) {
+    const d = result[dim.key];
+    if (!d) continue;
+    const pct = d.score * 10;
+    html += `<div class="case-study-dim">
+      <div class="dim-header">${dim.label} <span>${d.score}/10</span></div>
+      <div class="dim-bar"><div class="dim-fill" style="width:${pct}%;background:${dim.color}"></div></div>
+      <div class="dim-feedback">${d.feedback}</div>
+    </div>`;
+  }
+  html += '</div>';
+
+  if (result.strengths?.length) {
+    html += '<div class="case-strengths"><strong>Strengths:</strong> ' + result.strengths.map(s => `<span class="strength-tag">✓ ${s}</span>`).join(' ') + '</div>';
+  }
+  if (result.improvements?.length) {
+    html += '<div class="case-improvements"><strong>Could improve:</strong> ' + result.improvements.map(s => `<span class="improve-tag">→ ${s}</span>`).join(' ') + '</div>';
+  }
+  if (result.summary) {
+    html += `<div class="case-summary">${result.summary}</div>`;
+  }
+  return html;
+}
+
+function renderApproaches(study) {
+  let html = '<div class="case-approaches"><strong>Possible approaches:</strong>';
+  for (const a of study.approaches) {
+    html += `<div class="case-approach">
+      <strong>${a.name}</strong>${a.trade_off ? ` <span style="opacity:0.6;">— ${a.trade_off}</span>` : ''}
+      <p>${a.description}</p>
+    </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function revealCaseApproaches(i) {
+  const fb = document.getElementById('case-feedback-' + i);
+  fb.className = 'case-study-feedback show';
+  fb.innerHTML = renderApproaches(window._caseStudies[i]);
+}

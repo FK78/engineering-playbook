@@ -60,6 +60,47 @@ quiz:
       - label: "multi-region deployment"
         terms: ["multi-region", "deploy in Asia", "another region", "closer server", "regional deployment"]
     answer: "The latency is caused by physical distance, not server capacity. Use a CDN to cache static/semi-static content at edge locations near users. For dynamic API calls, deploy to a region closer to Asian users (e.g., ap-southeast-1) or use a multi-region architecture."
+case_studies:
+  - title: "Surviving Black Friday — 10x Traffic Spike"
+    category: "Scaling Challenge"
+    difficulty: "⭐⭐"
+    scenario: "ShopStream is a mid-size e-commerce platform selling electronics. They run 2 EC2 instances (m5.large) behind an ALB, with a single db.r5.xlarge RDS PostgreSQL instance. Normal traffic is 200 requests/sec with 150ms average response time. Last Black Friday, traffic spiked to 2,000 requests/sec within 30 minutes — the database CPU hit 100%, connection pools exhausted, and the site returned 503 errors for 6 hours. They lost an estimated $180K in sales. Their normal monthly AWS bill is $5K, and the CFO has approved up to $15K/month during November-December but wants costs back to normal by January."
+    constraints: "Budget: $5K/month normal, $15K/month during peak season. Team: 4 backend engineers, 1 DevOps. Timeline: 8 weeks until next Black Friday. Cannot re-platform the application — must work with the existing Node.js/PostgreSQL stack."
+    prompts:
+      - "The database was the bottleneck, not the app servers. What specific database-level changes would you make to handle 10x read traffic without re-architecting the application?"
+      - "How would you design the auto-scaling policy for the application tier? What metric would you scale on, and why might CPU not be the best choice for this workload?"
+      - "What caching strategy would you implement to reduce database load? Which data is safe to cache and which absolutely must be real-time (think: product pages vs. inventory counts)?"
+      - "How do you ensure costs return to $5K/month after the peak? What's your scale-down strategy?"
+    approaches:
+      - name: "Vertical Scale DB + Read Replicas + Redis Cache"
+        description: "Upgrade the RDS instance to db.r5.4xlarge for Black Friday, add 2 read replicas for product catalog and search queries, and introduce a Redis ElastiCache cluster for product pages, category listings, and session data. Application code routes read queries to replicas and checks cache before hitting the database. After the event, scale the RDS instance back down and reduce replica count to 1."
+        trade_off: "Straightforward to implement within 8 weeks and doesn't require application re-architecture. But vertical scaling has a ceiling, read replicas add replication lag (stale inventory risk), and the team must modify query routing in the application. Cost is predictable and reversible."
+      - name: "Auto-Scaling App Tier + CDN + Queue-Based Order Processing"
+        description: "Set up an ASG with target-tracking on ALB request count (not CPU). Put CloudFront in front of the ALB to cache static assets and product images. Decouple order processing by putting checkout requests into an SQS queue — the API returns 'order received' immediately while workers process orders asynchronously. This protects the database from checkout-spike writes."
+        trade_off: "Handles traffic spikes more gracefully and protects the database from write storms. But asynchronous checkout changes the user experience (no instant confirmation), requires careful idempotency handling, and adds operational complexity with SQS/workers. The CDN helps with static content but doesn't reduce database load for dynamic queries."
+      - name: "Pre-Scaled Infrastructure with Scheduled Scaling"
+        description: "Use scheduled scaling to pre-provision infrastructure before Black Friday: 8 app instances, RDS scaled to db.r5.4xlarge, 3 read replicas, and a warmed Redis cache. Run a load test at 3,000 req/sec two weeks before to validate. Set up CloudWatch alarms and a runbook for manual intervention. Schedule scale-down for December 1st."
+        trade_off: "The most predictable approach — you know exactly what capacity you'll have and can load-test it in advance. But you pay for peak capacity even during quiet hours of the sale, and it doesn't handle unexpected traffic beyond what you pre-provisioned. Best combined with reactive auto-scaling as a safety net."
+  - title: "From SSH Deploys to Modern CI/CD"
+    category: "Migration"
+    difficulty: "⭐⭐⭐"
+    scenario: "FieldOps is a logistics SaaS company with a Django monolith running on 8 Ubuntu EC2 instances behind an ALB. Deployments are done by the lead developer who SSHs into each server sequentially, runs git pull, pip install, and restarts gunicorn. The process takes 2 hours, causes 15 minutes of downtime per server (2 hours total rolling), and requires the lead dev to be available. Last month, a bad deploy introduced a database migration bug that took the site down for 4 hours — there was no way to roll back because the migration was destructive. The team has 6 developers, none with DevOps experience, and the CTO wants zero-downtime deployments within 3 months."
+    constraints: "Team: 6 developers with no DevOps/CI-CD experience. Timeline: 3 months. Budget: $2K/month additional infrastructure. Must support the existing Django/PostgreSQL stack. Cannot afford more than 30 minutes of planned downtime during the migration to the new system."
+    prompts:
+      - "What's the simplest CI/CD pipeline you could set up that eliminates SSH-based deploys? Consider the team's lack of DevOps experience when choosing tools."
+      - "How do you solve the destructive database migration problem? What practices prevent a bad migration from being unrecoverable?"
+      - "Should you containerize the application or keep deploying to EC2 instances? What factors drive this decision for a team with no Docker experience?"
+      - "How do you handle the transition period where the team is learning the new deployment process? What's your rollback plan if the new pipeline itself has issues?"
+    approaches:
+      - name: "GitHub Actions + AWS CodeDeploy (No Containers)"
+        description: "Set up GitHub Actions to run tests on every PR. On merge to main, build an application artifact (zip), upload to S3, and trigger AWS CodeDeploy for a rolling deployment across the 8 EC2 instances with automatic rollback on health check failure. Database migrations run as a separate, manually-triggered pipeline step with a required approval gate. Use Django's migration framework with backward-compatible migrations only (no destructive changes without a multi-step process)."
+        trade_off: "Lowest learning curve — the team keeps their familiar EC2 environment and just adds automation on top. CodeDeploy handles rolling deploys and rollback natively. But the servers are still mutable (configuration drift risk), and you're not solving the underlying 'snowflake server' problem. Good enough for now, but may need revisiting in a year."
+      - name: "Containerize with Docker + ECS Fargate + Blue-Green"
+        description: "Containerize the Django app with Docker. Deploy to ECS Fargate (no servers to manage). Use ECS blue-green deployments via CodeDeploy — deploy the new version as a separate task set, run health checks, then switch ALB traffic. If the new version fails, traffic switches back instantly. Database migrations run in a separate ECS task before the deployment."
+        trade_off: "Eliminates server management entirely and gives true zero-downtime blue-green deployments. But the team must learn Docker, ECS, and task definitions — a steep curve for 6 developers with no DevOps experience. The 3-month timeline is tight. Fargate costs more than EC2 for equivalent compute."
+      - name: "AWS Elastic Beanstalk with Managed Deployments"
+        description: "Migrate the Django app to Elastic Beanstalk, which provides managed EC2 instances, auto-scaling, rolling deployments, and one-click rollback out of the box. Configure rolling deployments with batch size of 2 (25% at a time) and health-check-based rollback. Use Beanstalk's .ebextensions for environment configuration. Database migrations run via a leader_only container command."
+        trade_off: "The fastest path to managed deployments — Beanstalk abstracts away most infrastructure concerns and the team can deploy via git push or the EB CLI. But Beanstalk is opinionated and constraining — customizing networking, scaling policies, or adding sidecars is harder. Teams often outgrow Beanstalk within 1-2 years and face another migration."
 ---
 
 ## Load Balancing
@@ -675,3 +716,7 @@ health.get("/health", async (req, res) => {
 ## Check Your Understanding
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

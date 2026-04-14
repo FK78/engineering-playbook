@@ -52,3 +52,37 @@
   .quiz-card { padding: 1rem; }
   .quiz-card textarea { min-height: 70px; font-size: 0.9rem; }
 }
+
+/* ===== CASE STUDIES ===== */
+.case-study-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; border-left: 4px solid #7b1fa2; }
+.case-study-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
+.case-study-badge { background: #7b1fa2; color: #fff; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.case-study-difficulty { font-size: 0.85rem; }
+.case-study-card h4 { color: #4a148c; margin: 0 0 0.8rem 0; font-size: 1.1rem; }
+.case-study-scenario { line-height: 1.7; margin-bottom: 1rem; }
+.case-study-constraints { background: #fff3e0; border-radius: 6px; padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.6; }
+.case-study-prompts { margin-bottom: 1rem; }
+.case-study-prompt { color: #4a148c; font-size: 0.9rem; margin-bottom: 0.3rem; line-height: 1.5; }
+.case-study-card textarea { width: 100%; min-height: 120px; background: #fff; color: #212529; border: 1px solid #ced4da; border-radius: 6px; padding: 0.8rem; font-family: inherit; font-size: 0.95rem; resize: vertical; line-height: 1.6; }
+.case-study-card textarea:focus { outline: none; border-color: #7b1fa2; box-shadow: 0 0 0 2px rgba(123,31,162,0.2); }
+.case-study-feedback { display: none; margin-top: 1rem; padding: 1.2rem; background: #fafafa; border-radius: 8px; border: 1px solid #e0e0e0; }
+.case-study-feedback.show { display: block; }
+.case-study-overall { font-size: 1.3rem; margin-bottom: 1rem; }
+.case-study-dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.case-study-dim { background: #fff; border-radius: 6px; padding: 0.8rem; border: 1px solid #eee; }
+.dim-header { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.4rem; }
+.dim-bar { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 0.4rem; }
+.dim-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+.dim-feedback { font-size: 0.82rem; color: #555; line-height: 1.5; }
+.case-strengths, .case-improvements { margin-bottom: 0.8rem; line-height: 1.8; }
+.strength-tag { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.82rem; margin: 0.2rem 0.3rem 0.2rem 0; }
+.improve-tag { display: inline-block; background: #fff3e0; color: #e65100; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.82rem; margin: 0.2rem 0.3rem 0.2rem 0; }
+.case-summary { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid #e0e0e0; line-height: 1.7; }
+.case-approaches { margin-top: 0.5rem; }
+.case-approach { background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 0.8rem; margin: 0.5rem 0; }
+.case-approach p { margin: 0.3rem 0 0; font-size: 0.9rem; color: #555; }
+@media (max-width: 768px) {
+  .case-study-dimensions { grid-template-columns: 1fr; }
+  .case-study-card { padding: 1rem; }
+  .case-study-card textarea { min-height: 100px; }
+}

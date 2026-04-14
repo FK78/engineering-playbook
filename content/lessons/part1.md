@@ -54,6 +54,47 @@ quiz:
       - label: "decoupled from database"
         terms: ["decouple", "doesn't know", "doesn't care", "independent", "isolat", "no sql", "without database", "switch database"]
     answer: "The Repository isolates data access behind an interface. Your service doesn't know about SQL or which database is used. This makes code testable and flexible."
+case_studies:
+  - title: "The 5,000-Line God Class"
+    category: "Architecture Decision"
+    difficulty: "⭐⭐"
+    scenario: "TechPulse is a B2B SaaS startup with 12,000 paying customers. Their Node.js monolith has grown over 3 years, and the UserService class has ballooned to 5,000 lines — handling authentication, profile management, role-based access, notification preferences, billing integration, and audit logging. Deployments take 45 minutes because the entire app must be tested end-to-end. A recent change to the billing logic broke the login flow, causing a 2-hour outage. The team of 6 engineers spends 30% of their time on merge conflicts in this single file."
+    constraints: "6 engineers, $0 additional infrastructure budget for 3 months, must maintain current feature velocity, 99.5% uptime SLA with customers"
+    prompts:
+      - "Should you refactor the existing UserService incrementally or rewrite it from scratch? What are the risks of each?"
+      - "How would you identify the responsibility boundaries within the 5,000-line class? What criteria would you use to decide where to split?"
+      - "How do you keep shipping features while restructuring? What's your strategy for avoiding a 'big bang' migration?"
+      - "What testing strategy would give you confidence that the split doesn't break existing behavior?"
+    approaches:
+      - name: "Strangler Fig Refactor"
+        description: "Extract one responsibility at a time into its own service class behind an interface. Start with the most independent concern (e.g., audit logging), route calls through the new class, and delete the old code once validated. Repeat for each concern over several sprints."
+        trade_off: "Safest approach with lowest risk of outage, but slow — could take 3-4 months to fully decompose. Requires discipline to avoid adding new code to the old class during the transition."
+      - name: "Parallel Rewrite with Feature Flags"
+        description: "Build a new set of focused services (AuthService, ProfileService, BillingBridge, etc.) alongside the existing UserService. Use feature flags to gradually route traffic to the new implementations, comparing outputs for correctness."
+        trade_off: "Faster end state and cleaner architecture, but doubles the code surface temporarily. Risk of subtle behavioral differences between old and new implementations. Requires robust feature flag infrastructure."
+      - name: "Modular Monolith with Enforced Boundaries"
+        description: "Keep everything in one deployable unit but reorganize into modules with explicit public APIs and no direct cross-module imports. Use a linter or build tool to enforce boundaries. Each module owns its own database tables."
+        trade_off: "Least disruptive — no infrastructure changes, no distributed systems complexity. But requires strong team discipline to maintain boundaries, and doesn't solve the deployment coupling problem."
+  - title: "Untangling the Spaghetti Legacy"
+    category: "Migration"
+    difficulty: "⭐⭐⭐"
+    scenario: "MediTrack, a healthcare scheduling platform, has been acquired by a larger company. The inherited PHP codebase has 200 API endpoints where controllers directly contain SQL queries, business logic, email sending, and PDF generation — often all in the same method. There are no tests. The original developers have left. The system serves 800 medical practices and processes 50,000 appointments per day. Downtime or data bugs directly affect patient care."
+    constraints: "4 engineers (none familiar with the codebase), 9-month deadline to pass a security audit, zero tolerance for data corruption, cannot freeze features — must ship 2 compliance features during migration"
+    prompts:
+      - "With 200 endpoints and no tests, how do you even start? What's your strategy for understanding what the code actually does?"
+      - "How do you introduce layers (controller → service → repository) without rewriting everything at once?"
+      - "Which endpoints do you migrate first? What criteria determine priority?"
+      - "How do you ensure the refactored code behaves identically to the original when there are no existing tests?"
+    approaches:
+      - name: "Characterization Tests First"
+        description: "Before changing any code, write integration tests that capture the current behavior of each endpoint — including bugs. Use HTTP-level tests that hit the endpoint and assert on the response. Once you have a safety net, extract business logic into service classes and SQL into repositories one endpoint at a time."
+        trade_off: "Highest confidence in correctness, but writing tests for 200 untested endpoints is extremely time-consuming. Could take 2-3 months before any structural improvement begins. Tests may be brittle if they depend on specific database state."
+      - name: "Facade Pattern with Incremental Extraction"
+        description: "Create a thin service layer that initially just delegates to the existing controller code. New features are built in the clean architecture. For each existing endpoint you touch (bug fix, feature change), extract its logic into the service layer at that time. Over months, the old code shrinks organically."
+        trade_off: "Lets you ship features immediately while improving incrementally. But progress is uneven — high-traffic endpoints get cleaned up while rarely-touched ones stay messy. Could take 18+ months to fully migrate at natural pace."
+      - name: "Priority-Based Rewrite of Critical Paths"
+        description: "Identify the 20-30 endpoints that handle sensitive data (patient records, payments, authentication) and rewrite them with proper layering, input validation, and audit logging. Leave the remaining 170+ endpoints as-is until the security audit passes."
+        trade_off: "Fastest path to passing the security audit and protecting patient data. But creates a two-tier codebase where critical paths are clean and everything else is legacy. Risk of the 'everything else' never getting cleaned up."
 ---
 
 ## Layered Architecture
@@ -589,3 +630,7 @@ test("getOrder returns order", async () => {
 ## Check Your Understanding
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

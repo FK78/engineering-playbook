@@ -50,6 +50,47 @@ quiz:
       - label: "reconstruct by replaying"
         terms: ["replay", "reconstruct", "rebuild", "rehydrat", "point in time", "history"]
     answer: "Event Sourcing. Instead of storing the current order state, store every event (OrderCreated, ItemAdded, OrderShipped). Reconstruct the state at any point by replaying events up to that moment. The event log is the source of truth."
+case_studies:
+  - title: "The 8-Second Order"
+    category: "Scaling Challenge"
+    difficulty: "⭐⭐"
+    scenario: "QuickCart is an online grocery platform processing 500 orders per minute at peak (weekday evenings, 6-9 PM). Placing an order currently takes 8 seconds because the Order Service synchronously calls four downstream services in sequence: Payment Gateway (1.5s), Inventory Service (2s), Email Service (1.5s), and Analytics Service (3s). Customers are abandoning checkout — conversion dropped 18% last month. During a recent flash sale, the Analytics Service went down for 20 minutes, which meant no orders could be placed at all, costing an estimated $120,000 in lost revenue."
+    constraints: "5 engineers, peak load of 500 orders/minute with 3x spikes during promotions, Payment and Inventory must succeed before confirming the order, Email and Analytics failures should never block checkout, 99.9% uptime target"
+    prompts:
+      - "Which of the four downstream calls are essential to order placement and which are not? How does this distinction change your architecture?"
+      - "If you make Email and Analytics asynchronous, how do you guarantee they eventually process every order? What happens if a message is lost?"
+      - "Payment and Inventory still take 3.5 seconds combined. Can you parallelize them? What are the consistency implications?"
+      - "How do you handle the scenario where Payment succeeds but Inventory fails? What's your compensation strategy?"
+    approaches:
+      - name: "Async Events for Non-Critical Paths"
+        description: "Keep Payment and Inventory as synchronous calls (they must succeed for the order to be valid), but publish an OrderPlaced event to a message queue after they complete. Email and Analytics subscribe to this event and process asynchronously. The order confirms in ~3.5 seconds instead of 8."
+        trade_off: "Cuts response time by more than half with minimal architectural change. Email might arrive a few seconds late, which users won't notice. But you need a message broker (SQS/RabbitMQ), dead-letter queues for failed messages, and monitoring to ensure consumers keep up. Analytics data has a slight delay."
+      - name: "Parallel Calls with Saga Compensation"
+        description: "Call Payment and Inventory in parallel (reducing their combined time from 3.5s to ~2s). If Payment succeeds but Inventory fails, execute a compensating refund. Email and Analytics are event-driven as above. Total response time drops to ~2 seconds."
+        trade_off: "Fastest possible response time, but parallel execution introduces compensation complexity. You need idempotent refund logic, and there's a brief window where a customer is charged but the order isn't confirmed. Requires careful error handling and monitoring of compensation flows."
+      - name: "Event-Driven with Orchestrator Saga"
+        description: "The Order Service creates a pending order and publishes a command to start the saga. An orchestrator coordinates Payment → Inventory in sequence, with compensating actions on failure. Once both succeed, it publishes OrderConfirmed, triggering Email and Analytics. The API returns immediately with a pending order ID; the client polls or uses WebSocket for confirmation."
+        trade_off: "Sub-second API response (just creates a pending record), fully decoupled, and the orchestrator provides clear visibility into the order workflow. But the user experience changes — they see 'processing' instead of instant confirmation. Adds infrastructure complexity (orchestrator, state machine, polling/WebSocket). Overkill if the 2-second parallel approach is fast enough."
+  - title: "The Auditable Fintech Ledger"
+    category: "Greenfield Design"
+    difficulty: "⭐⭐⭐"
+    scenario: "VaultPay is a fintech startup building a digital wallet for small businesses. Regulators require a complete, immutable audit trail of every account change — deposits, withdrawals, transfers, fee deductions, and balance adjustments — with the ability to reconstruct any account's exact balance at any point in time. Simultaneously, the mobile app needs a fast dashboard showing current balances, recent transactions, and monthly spending summaries for 50,000 accounts. The compliance team must be able to query 'What was Account X's balance at 3:47 PM on March 12th?' within seconds."
+    constraints: "7 engineers, must pass SOC 2 and financial regulator audit within 6 months, read-to-write ratio of 200:1, dashboard must load in under 500ms, audit queries must return in under 5 seconds, zero tolerance for lost transactions"
+    prompts:
+      - "How does event sourcing help meet the regulatory requirement? What would the event schema look like for financial transactions?"
+      - "The dashboard needs sub-500ms reads but the audit trail could have millions of events per account. How do you serve both needs?"
+      - "How do you handle the 'balance at a point in time' query efficiently without replaying all events from the beginning?"
+      - "What happens if a bug in your projection logic produces incorrect dashboard balances? How do you detect and recover?"
+    approaches:
+      - name: "Event Sourcing with CQRS Projections"
+        description: "Store every account change as an immutable event in an append-only event store (the source of truth). Project events into a read-optimized database for the dashboard — a balances table, a recent_transactions table, and a monthly_summaries table. Use snapshots every 1,000 events to speed up point-in-time reconstruction. The compliance team queries the event store directly for audit trails."
+        trade_off: "Perfect audit trail by design — events are immutable and complete. Dashboard reads are fast because projections are pre-computed. But event sourcing adds significant complexity: schema evolution of events is hard, projections can drift if there are bugs (need rebuild capability), and the team needs to learn a new paradigm. Snapshots add another moving part."
+      - name: "Append-Only Ledger with Materialized Views"
+        description: "Use a traditional relational database with an append-only transactions table (no UPDATEs or DELETEs allowed — enforced by database permissions). Current balances are maintained as a materialized view or trigger-updated summary table. Point-in-time balance is calculated with SELECT SUM(amount) FROM transactions WHERE account_id = X AND timestamp <= T."
+        trade_off: "Simpler than full event sourcing — the team can use familiar SQL and relational patterns. The append-only constraint provides auditability. But point-in-time queries get slow as transaction volume grows (millions of rows to sum). Materialized views can lag. Doesn't naturally support replaying events to build new projections."
+      - name: "Dual-Write with Immutable Audit Log"
+        description: "Write current state to a normalized PostgreSQL database for the dashboard (fast reads, familiar queries). Simultaneously write every change to an immutable audit log (DynamoDB with no delete permissions, or S3 with object lock). The dashboard reads from PostgreSQL; compliance queries the audit log. A reconciliation job periodically verifies the two are consistent."
+        trade_off: "Simplest mental model — current state in one place, audit trail in another. Each store is optimized for its purpose. But dual-writes risk inconsistency if one write succeeds and the other fails (need transactional outbox or change data capture). The reconciliation job adds operational overhead. Two sources of truth is inherently fragile."
 ---
 
 ## Event-Driven Architecture
@@ -911,3 +952,7 @@ These patterns often combine:
 ## Check Your Understanding
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

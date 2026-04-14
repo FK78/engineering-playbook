@@ -23,6 +23,47 @@ quiz:
     concepts:
       - label: "Consistency Trade-offs"
         terms: ["CAP theorem", "strong consistency", "eventual consistency", "two-phase commit", "saga", "CQRS", "event sourcing", "trade-off analysis"]
+case_studies:
+  - title: "Design a Multi-Channel Notification System"
+    category: "Greenfield Design"
+    difficulty: "⭐⭐⭐"
+    scenario: "AlertHub is a platform with 10M registered users that needs a unified notification system supporting email, push notifications (iOS/Android), SMS, and in-app notifications. Users can configure preferences per channel — for example, a user might want marketing emails but only push notifications for security alerts. The system must deliver 50M notifications per day (roughly 580/sec average, with spikes to 5,000/sec during marketing campaigns). Current state: each team (marketing, security, product) has built their own notification logic, resulting in 4 separate email-sending implementations, inconsistent user preference handling, and users receiving duplicate notifications. Last month, a marketing blast sent 2M emails to users who had unsubscribed, triggering a GDPR complaint."
+    constraints: "Team: 3 backend engineers dedicated to this project, with support from a platform team. Budget: $6K/month for notification infrastructure (SES, SNS, Twilio). Timeline: MVP in 10 weeks. Must integrate with 4 existing services that currently send notifications directly. Must be GDPR-compliant (respect unsubscribe preferences, provide audit trail)."
+    prompts:
+      - "How do you design the preference system so that user channel preferences are always respected, even when a new notification type is added? Think about the data model for preferences and how it interacts with the delivery pipeline."
+      - "What's the architecture for handling 5,000 notifications/sec during spikes without dropping messages or overwhelming downstream providers (SES has sending limits, Twilio has rate limits)?"
+      - "How do you ensure exactly-once delivery semantics — or at least prevent the duplicate notification problem? What happens when a push notification provider returns an ambiguous response?"
+      - "How do you design the system so that the 4 existing services can migrate incrementally without a big-bang cutover?"
+    approaches:
+      - name: "Event-Driven Pipeline with Priority Queues"
+        description: "Build a notification service that exposes a single API: POST /notify with a payload containing recipient, notification type, and content. The service checks user preferences, then routes to channel-specific SQS queues (email-queue, push-queue, sms-queue, in-app-queue) with priority levels (security: high, marketing: low). Channel workers consume from queues and call the appropriate provider (SES, FCM/APNs, Twilio). Each notification gets a unique idempotency key stored in DynamoDB to prevent duplicates. A dead-letter queue captures failures for retry."
+        trade_off: "Clean separation of concerns — preference checking, routing, and delivery are independent stages. Priority queues ensure security alerts aren't delayed by marketing blasts. But the system has multiple failure points (queue, worker, provider), and debugging a 'notification not received' complaint requires tracing through several components. DynamoDB idempotency adds latency to every notification."
+      - name: "Centralized Notification Orchestrator with Fan-Out"
+        description: "Build a notification orchestrator service that receives notification requests, resolves user preferences from a Redis-cached preference store, and fans out to all applicable channels in parallel. Each channel adapter handles provider-specific logic (batching for SES, token management for push). Use Kafka as the backbone — producers publish notification events, the orchestrator consumes and fans out, and each channel adapter consumes from its own topic. Kafka's consumer groups provide natural load balancing and replay capability."
+        trade_off: "Kafka provides durability, replay (re-process failed notifications), and natural backpressure. The orchestrator pattern gives a single place to enforce business rules (quiet hours, frequency capping, preference checks). But Kafka adds operational complexity, the orchestrator is a potential bottleneck/single point of failure, and the team must manage Kafka infrastructure (or pay for MSK). More suited for teams with Kafka experience."
+      - name: "Serverless Fan-Out with Step Functions"
+        description: "Use AWS Step Functions to orchestrate the notification flow: receive event → check preferences (Lambda) → fan-out to channels (parallel state) → deliver via channel-specific Lambdas (SES, SNS for push, Twilio SDK for SMS, API call for in-app). Step Functions provides built-in retry, error handling, and visual execution tracing. Store preferences in DynamoDB with a DAX cache. Use EventBridge as the entry point so existing services publish events without knowing about the notification system."
+        trade_off: "Lowest operational overhead — no servers, queues, or Kafka to manage. Step Functions' visual workflow makes debugging straightforward, and EventBridge decouples producers cleanly. But Step Functions has a per-state-transition cost that adds up at 50M notifications/day (~$150K/year for Step Functions alone), Lambda cold starts can add latency to time-sensitive notifications, and the 25,000 events/sec EventBridge limit may require batching during spikes."
+  - title: "Design a Real-Time Collaborative Document Editor"
+    category: "Greenfield Design"
+    difficulty: "⭐⭐⭐"
+    scenario: "DocSync is building a real-time collaborative document editor for enterprise teams — think Google Docs for regulated industries (healthcare, finance). Up to 50 users can edit the same document simultaneously. The editor must show each user's cursor position in real-time, handle conflicting edits without data loss, and support offline editing that syncs when the user reconnects. Documents average 50KB but can reach 2MB. The target market requires that all data stays within the customer's chosen AWS region (data residency) and that a full edit history is retained for 7 years (compliance audit trail). The company has 500 paying teams with an average of 20 users each."
+    constraints: "Team: 6 engineers (2 frontend, 3 backend, 1 infra). Budget: $10K/month infrastructure. Timeline: 12 weeks to a working prototype with real-time co-editing and cursor presence. Offline support can follow in phase 2. Must support data residency (deploy per-region). Documents must be recoverable to any point in their edit history."
+    prompts:
+      - "What conflict resolution strategy would you use — Operational Transformation (OT) or Conflict-free Replicated Data Types (CRDTs)? What are the practical trade-offs for a team of 6 building this in 12 weeks?"
+      - "How do you design the real-time communication layer to handle 50 concurrent editors with sub-200ms latency for cursor updates and edits? What protocol and infrastructure do you use?"
+      - "How do you store the document and its edit history to support both real-time collaboration and the 7-year audit trail requirement? Think about the hot path (active editing) vs. cold path (historical audit)."
+      - "How does offline editing work? When a user reconnects after editing offline for 2 hours, how do you merge their changes with the 47 edits that happened while they were away?"
+    approaches:
+      - name: "OT-Based with Central Server"
+        description: "Use Operational Transformation with a central server that acts as the single source of truth. Each client sends operations (insert, delete) to the server, which transforms them against concurrent operations and broadcasts the result. The server maintains a linear operation log per document. Use WebSockets for real-time communication, with a Redis pub/sub layer for cursor presence. Store the current document state in PostgreSQL and the operation log in an append-only table. Archive operation logs older than 30 days to S3 for the 7-year audit trail."
+        trade_off: "OT is well-understood (Google Docs uses it) and the central server simplifies conflict resolution — there's one canonical operation order. But the server is a bottleneck and single point of failure for each document session, OT algorithms are notoriously complex to implement correctly (especially for rich text), and the central server must be in the customer's region (data residency). Scaling to many concurrent documents requires careful session routing."
+      - name: "CRDT-Based with Peer-Aware Server"
+        description: "Use a CRDT library (Yjs or Automerge) for conflict-free merging. Each client maintains a local CRDT document and syncs changes via a lightweight server that relays updates between peers. CRDTs guarantee convergence without a central authority — edits can happen offline and merge automatically on reconnect. Store CRDT snapshots in S3 (one per document) and sync deltas in DynamoDB. Use WebSocket connections to the server for real-time relay, with cursor positions broadcast as ephemeral presence data."
+        trade_off: "CRDTs handle offline editing naturally (the core use case for phase 2) and eliminate the central server as a conflict resolution bottleneck. Libraries like Yjs are mature and handle rich text. But CRDT documents are larger than plain text (metadata overhead can be 2-10x), the 7-year audit trail is harder because CRDTs don't have a linear operation log (you'd need to snapshot periodically), and debugging merge conflicts in production is more opaque than OT's deterministic transformation."
+      - name: "Hybrid — CRDT Client + Event-Sourced Server"
+        description: "Use Yjs on the client for local editing and conflict resolution. The server receives CRDT sync updates and also writes each change as an event to an append-only event store (DynamoDB Streams or Kafka). The event store provides the 7-year audit trail and enables point-in-time document reconstruction. Current document state is materialized into S3 on every save. WebSocket connections handle real-time sync, and a presence service (Redis) tracks cursors. For offline support, the client's Yjs document syncs its accumulated changes when reconnecting."
+        trade_off: "Combines the best of both: CRDTs handle the hard problem of conflict resolution and offline support, while event sourcing provides the audit trail and point-in-time recovery the compliance team needs. But it's the most complex architecture — the team must understand both CRDTs and event sourcing, and there are two representations of truth (CRDT state and event log) that must stay consistent. The 12-week timeline is aggressive for this approach."
 ---
 
 # Part 8: System Design Practice
@@ -609,3 +650,7 @@ System design is not about memorising solutions — it is about developing the j
 ---
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

@@ -60,6 +60,47 @@ quiz:
       - label: "public client"
         terms: ["public client", "mobile", "can't store secret", "no client secret", "untrusted", "native app"]
     answer: "Authorization code flow with PKCE. The app needs to act on behalf of a user (their calendar), so user consent is required. Client credentials is for machine-to-machine with no user context. Mobile apps are public clients that can't safely store a client secret, so PKCE is essential."
+case_studies:
+  - title: "Evolving Auth for a Growing SaaS Platform"
+    category: "Architecture Decision"
+    difficulty: "⭐⭐"
+    scenario: "TenantFlow is a B2B project management SaaS with 50K users, currently using server-side session-based authentication with cookies stored in Redis. Their product team wants to launch a native mobile app (iOS and Android), open a public API for third-party integrations, and close a deal with an enterprise customer that requires SAML/OIDC SSO. The current session-based system doesn't work for mobile (no cookie support in API calls) and has no concept of scoped access for third-party apps. The enterprise deal is worth $400K ARR but has a 90-day deadline."
+    constraints: "3-person backend team, 90-day deadline for enterprise SSO, must not break existing web app login during migration, budget for one managed auth service."
+    prompts:
+      - "Should you build auth in-house or adopt a managed identity provider (Auth0, Cognito, Keycloak)? What are the long-term implications of each?"
+      - "How do you support both the existing web app (sessions/cookies) and the new mobile app (tokens) during the transition without maintaining two auth systems permanently?"
+      - "How would you design scoped API tokens for third-party integrations so that a misbehaving integration can't access data it shouldn't?"
+      - "What's your migration strategy to avoid a 'big bang' cutover that could lock out 50K existing users?"
+    approaches:
+      - name: "Managed Identity Provider (Auth0/Cognito)"
+        description: "Adopt a managed service that handles OAuth 2.0, OIDC, SAML SSO, and token management out of the box. The web app migrates to authorization code flow, mobile uses PKCE, and third-party integrations use client credentials or authorization code. SSO is configured via the provider's dashboard."
+        trade_off: "Fastest path to the 90-day deadline and reduces auth maintenance burden permanently. However, you take a vendor dependency, pay per-MAU costs that grow with your user base, and have less control over the login UX and token lifecycle."
+      - name: "Self-Hosted Keycloak + Custom Token Service"
+        description: "Deploy Keycloak as your identity provider, configure SAML/OIDC realms for enterprise SSO, and issue JWTs for mobile and API access. The existing web app switches from sessions to Keycloak-issued tokens. Third-party apps register as OAuth clients with scoped permissions."
+        trade_off: "Full control over auth infrastructure and no per-user costs. But Keycloak is operationally complex — your 3-person team must manage upgrades, HA, and security patches. The 90-day deadline is tight for a self-hosted setup."
+      - name: "Incremental Hybrid — Keep Sessions, Add JWT Layer"
+        description: "Keep the existing session-based auth for the web app untouched. Add a new JWT-based auth layer for mobile and API consumers. Build a lightweight token exchange endpoint that converts a valid session into a JWT. Integrate a SAML-to-JWT bridge for enterprise SSO."
+        trade_off: "Lowest risk to existing users since the web app doesn't change. But you end up maintaining two auth systems indefinitely, which increases security surface area and makes permission changes harder to keep consistent across both paths."
+  - title: "Incident Response — Leaked AWS Credentials"
+    category: "Incident Response"
+    difficulty: "⭐⭐"
+    scenario: "DevPulse is a 15-person startup building a developer analytics platform. Last Tuesday, an intern committed AWS access keys (with AdministratorAccess) to a public GitHub repo. An automated bot scraped the credentials within 3 minutes and spun up 47 p3.16xlarge GPU instances across 6 regions for crypto mining. By the time the team noticed 4 hours later, the bill had reached $12,000 and was climbing. AWS Support froze the account, but the team has no incident response playbook, no secrets management, and developers routinely use long-lived IAM user credentials locally."
+    constraints: "15-person team with no dedicated security engineer, $2K/month infrastructure budget normally, need to restore service within 24 hours, must prevent recurrence before re-enabling the compromised account."
+    prompts:
+      - "What are the immediate steps to contain this incident in the first 30 minutes? Think about credential rotation, resource termination, and blast radius assessment."
+      - "How do you design a secrets management architecture that prevents credentials from ever appearing in source code?"
+      - "What guardrails would you put in place so that even if credentials leak again, the blast radius is limited (think IAM policies, SCPs, billing alarms)?"
+      - "How do you balance security rigor with developer velocity for a 15-person startup that moves fast?"
+    approaches:
+      - name: "Managed Secrets + Pre-Commit Hooks + IAM Hardening"
+        description: "Move all secrets to AWS Secrets Manager or SSM Parameter Store. Install pre-commit hooks (git-secrets, truffleHog) on all developer machines to block credential commits. Replace long-lived IAM user keys with short-lived credentials via IAM Identity Center (SSO) and IAM Roles. Set up AWS Organizations SCPs to restrict which regions and instance types can be used. Add billing alarms at $500, $1K, and $2K thresholds."
+        trade_off: "Comprehensive protection with multiple layers. But it requires changing every developer's workflow (no more hardcoded keys), takes 2-3 weeks to fully implement, and pre-commit hooks can be bypassed if a developer skips them."
+      - name: "GitHub Secret Scanning + AWS Guardrails Only"
+        description: "Enable GitHub's built-in secret scanning and push protection (blocks pushes containing detected secrets). On the AWS side, enforce IAM roles everywhere (no IAM user keys), set SCPs to deny ec2:RunInstances for GPU instance types, and configure AWS Config rules to detect and auto-remediate overly permissive IAM policies."
+        trade_off: "Lighter-weight implementation that leverages platform-native tools. But GitHub secret scanning only catches known patterns (custom secrets may slip through), and this approach doesn't address secrets in other contexts like CI/CD configs or Slack messages."
+      - name: "Zero-Trust Dev Environment with Ephemeral Credentials"
+        description: "Eliminate all long-lived credentials entirely. Developers authenticate via SSO and receive temporary AWS credentials (1-hour expiry) through aws-vault or IAM Identity Center. CI/CD pipelines use OIDC federation with GitHub Actions (no stored secrets). All infrastructure provisioning goes through Terraform with a CI pipeline — no developer has direct console or CLI access to production."
+        trade_off: "The strongest security posture — leaked credentials expire before they can be exploited. But it's the most disruptive to implement, requires SSO infrastructure, and developers lose the ability to quickly experiment in AWS directly. For a fast-moving startup, this friction may slow down iteration."
 ---
 
 ## Authentication vs Authorization
@@ -687,3 +728,7 @@ res.cookie("session", token, {
 ## Check Your Understanding
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}

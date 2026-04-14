@@ -60,6 +60,47 @@ concepts:
     terms: ["read-your-writes", "monotonic reads", "eventual consistency", "strong consistency", "causal consistency"]
   - label: "ACID vs BASE"
     terms: ["atomicity", "consistency", "isolation", "durability", "basically available", "soft state", "eventual consistency", "CAP theorem"]
+case_studies:
+  - title: "Fixing the 3-Second Feed Query"
+    category: "Scaling Challenge"
+    difficulty: "⭐⭐⭐"
+    scenario: "BuzzBoard is a social media platform with 2M daily active users. The home feed — showing posts from followed users, sorted by relevance — is the core feature and accounts for 80% of all traffic. The current implementation runs a single SQL query that joins 6 tables: users, posts, follows, likes, comments, and media. Average feed load time is 3.2 seconds, with p99 at 8 seconds. The PostgreSQL database (db.r6g.2xlarge) is at 78% CPU during peak hours, and adding read replicas hasn't helped because the query itself is expensive. Users are churning — analytics shows a direct correlation between feed load time and 7-day retention. The product team wants sub-500ms feed loads."
+    constraints: "Team: 5 backend engineers, 2 data engineers. Budget: $8K/month additional infrastructure. Timeline: 6 weeks to show measurable improvement. Cannot change the product requirements (feed must show posts from followed users with like/comment counts, sorted by a relevance score). Currently serving 15,000 feed requests/minute at peak."
+    prompts:
+      - "Should you optimize the existing SQL query (better indexes, materialized views) or fundamentally change how the feed is assembled? What signals tell you which approach is right?"
+      - "If you pre-compute feeds, when do you compute them — on write (fan-out on write) or on read (fan-out on read)? How does the follow graph shape (celebrities with 1M followers vs. average users with 200) affect this decision?"
+      - "What storage system would you use for the pre-computed feed? Why might a relational database not be the best fit for this access pattern?"
+      - "How do you handle the transition? You can't take the feed offline for a week while you rebuild it."
+    approaches:
+      - name: "Denormalized Feed Cache with Fan-Out on Write"
+        description: "When a user publishes a post, asynchronously write a feed entry to every follower's pre-computed feed in Redis (sorted set keyed by user_id, scored by relevance). Feed reads become a single Redis ZREVRANGE — no joins, no SQL. Use a background worker to handle fan-out via an SQS queue. For users with >50K followers (celebrities), use fan-out on read instead to avoid write amplification."
+        trade_off: "Feed reads drop to <10ms — a 300x improvement. But write amplification is significant (a post from a user with 10K followers generates 10K Redis writes), storage costs increase substantially, and feed updates are eventually consistent (a new post may take 1-2 seconds to appear in all followers' feeds). The hybrid approach for celebrities adds complexity."
+      - name: "Materialized View + Aggressive Caching"
+        description: "Create a PostgreSQL materialized view that pre-joins the 6 tables and refreshes every 60 seconds. Add a Redis cache layer in front with a 30-second TTL for individual feed pages. Optimize the materialized view with partial indexes on active users and recent posts. This keeps the existing architecture but eliminates the expensive real-time join."
+        trade_off: "Simplest to implement — no new infrastructure beyond Redis, and the team already knows PostgreSQL. But feeds are up to 90 seconds stale (60s refresh + 30s cache TTL), the materialized view refresh itself is expensive and locks the table briefly, and this approach has a scaling ceiling — at 5M DAU, the materialized view refresh may take too long."
+      - name: "Dedicated Feed Service with Cassandra"
+        description: "Build a separate feed microservice backed by Cassandra. Partition key is user_id, clustering key is relevance_score descending. When a post is created, an event triggers the feed service to write denormalized feed entries for each follower. The feed service exposes a simple API: GET /feed/{userId}?limit=20. The main application delegates all feed reads to this service."
+        trade_off: "Purpose-built for the feed access pattern — Cassandra handles the write throughput of fan-out and provides fast partition scans for reads. But it introduces a new database technology the team must learn and operate, adds a network hop for feed reads, and requires careful handling of the denormalized data (updating a user's display name means updating it across millions of feed entries)."
+  - title: "Multi-Tenant Database — The Noisy Neighbor Problem"
+    category: "Architecture Decision"
+    difficulty: "⭐⭐⭐"
+    scenario: "DataForge is a B2B analytics SaaS with 500 customers sharing a single PostgreSQL database (db.r6g.4xlarge). Each customer's data is isolated by a tenant_id column on every table. The median customer has 50K rows in the events table, but the largest customer (MegaCorp) has 5M rows — 100x the average. MegaCorp runs complex analytical queries that regularly trigger sequential scans on the events table, pushing database CPU to 95% and causing query latency spikes for all other tenants. Last week, a MegaCorp report query ran for 12 minutes and caused 30-second response times across the platform. Three mid-tier customers have threatened to leave. The sales team is about to close another enterprise customer similar in size to MegaCorp."
+    constraints: "Team: 4 backend engineers, 1 DBA. Budget: $12K/month additional infrastructure. Timeline: must show improvement within 4 weeks (before the 3 unhappy customers' contract renewals). Cannot break the existing API contract — tenants access data through the same REST API. Currently 500 tenants, expecting 50 more per quarter."
+    prompts:
+      - "What are the different strategies for isolating tenant workloads in a shared database? Think about the spectrum from query-level throttling to full database-per-tenant."
+      - "How do you decide which tenants get their own database vs. staying in the shared pool? What criteria beyond data volume matter (query patterns, SLA tier, revenue)?"
+      - "How do you migrate MegaCorp's data to a separate database without downtime? What's the sequence of operations to ensure no data is lost or duplicated during the move?"
+      - "How does your solution handle the next MegaCorp-sized customer the sales team is about to close?"
+    approaches:
+      - name: "Tiered Isolation — Silo Large Tenants, Pool the Rest"
+        description: "Move MegaCorp (and future enterprise tenants) to a dedicated RDS instance. Keep the remaining 499 tenants on the shared database. Add a tenant routing layer in the application that directs queries to the correct database based on tenant_id. Enterprise tenants get their own connection pool and can run heavy queries without affecting others. Use AWS DMS for zero-downtime migration of MegaCorp's data."
+        trade_off: "Directly solves the noisy neighbor problem for the biggest offenders. But you now manage multiple databases (schema migrations must run on all of them), the routing layer adds complexity, and you need a clear policy for when a tenant 'graduates' to a dedicated instance. Cost scales linearly with the number of siloed tenants."
+      - name: "Query-Level Throttling + Read Replicas for Analytics"
+        description: "Implement per-tenant query throttling using pg_stat_statements monitoring and connection pool limits (e.g., MegaCorp gets max 5 concurrent queries). Route all analytical/reporting queries to a dedicated read replica, keeping the primary for transactional workloads. Add statement_timeout per tenant tier (enterprise: 60s, standard: 10s). This keeps all tenants in one database but prevents any single tenant from monopolizing resources."
+        trade_off: "No data migration needed — fastest to implement (days, not weeks). But it's a band-aid: throttling MegaCorp's queries means their reports run slower, which may violate their SLA. Read replicas help with read load but don't solve the fundamental problem of a 5M-row table scan competing with small-tenant queries. This buys time but doesn't scale."
+      - name: "Partition by Tenant with PostgreSQL Table Partitioning"
+        description: "Convert the events table (and other large tables) to use PostgreSQL declarative partitioning with tenant_id as the partition key. Each tenant's data lives in its own physical partition. PostgreSQL's partition pruning ensures that MegaCorp's queries only scan MegaCorp's partition, not the entire table. Large tenants can have their partitions on faster storage (io2 volumes). No application changes needed — the partitioning is transparent to SQL queries."
+        trade_off: "Elegant solution that keeps a single database while providing physical isolation of data. Partition pruning eliminates cross-tenant interference for most queries. But PostgreSQL has practical limits on partition count (500 tenants = 500 partitions per table, which can slow planning), partition maintenance (adding/removing tenants requires DDL), and some queries that span all partitions (admin dashboards) become slower. Works well up to ~1,000 tenants but may need re-evaluation beyond that."
 ---
 
 Data architecture is the foundation every other architectural decision rests on. Choose the wrong database, ignore caching, or misunderstand consistency trade-offs, and no amount of clever application code will save you. This lesson covers the core decisions you'll face when designing data layers for real systems.
@@ -898,3 +939,7 @@ async def transfer(from_id: str, to_id: str, amount: float) -> None:
 </div>
 
 {{< quiz >}}
+
+## Scenario Challenges
+
+{{< case-studies >}}
