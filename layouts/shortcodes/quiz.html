@@ -1,0 +1,9 @@
+<div id="quiz-container"></div>
+<div style="margin-top:1.5rem;text-align:center;">
+  <button class="quiz-btn" onclick="checkAll()">Check All Answers</button>
+  <button class="quiz-btn reveal" onclick="revealAll()">Reveal All Answers</button>
+</div>
+<div id="overall-score" style="text-align:center;margin-top:1.5rem;font-size:1.2rem;display:none;"></div>
+<script>
+  initQuiz({{ .Page.Params.quiz | jsonify }});
+</script>

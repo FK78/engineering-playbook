@@ -1,0 +1,326 @@
+function buildSidebar(activePage) {
+  const nav = {
+    "Part 1: Foundations": {
+      "part1.html": {
+        "Layered Architecture": "layered-architecture",
+        "Coupling": "coupling",
+        "Fixing Tight Coupling": "fixing-tight-coupling",
+        "Testing Loose Coupling": "testing-loosely-coupled-code",
+        "Testing Pyramid": "are-mocks-reliable-the-testing-pyramid",
+        "Cohesion": "cohesion",
+        "Separation of Concerns": "separation-of-concerns",
+        "DAO": "dao--data-access-object",
+        "Repository Pattern": "repository-pattern",
+        "DAO vs Repository": "dao-vs-repository",
+        "Key Takeaways": "key-takeaways",
+        "Quiz": "check-your-understanding"
+      }
+    },
+    "Part 2: API & Domain": {
+      "part2.html": {
+        "REST Fundamentals": "rest-fundamentals",
+        "REST in Practice": "rest-in-practice",
+        "GraphQL": "graphql",
+        "REST vs GraphQL": "rest-vs-graphql",
+        "Domain Modeling": "domain-modeling",
+        "Bounded Contexts": "bounded-contexts",
+        "Key Takeaways": "key-takeaways-2",
+        "Quiz": "check-your-understanding-2"
+      }
+    },
+    "Part 3: Events & CQRS": {
+      "part3.html": {}
+    },
+    "Part 4: Distributed Systems": {
+      "part4.html": {}
+    }
+  };
+
+  let html = '<h2>Architecture Learning</h2>';
+
+  for (const [partLabel, pages] of Object.entries(nav)) {
+    html += `<div class="part-label">${partLabel}</div>`;
+    for (const [page, sections] of Object.entries(pages)) {
+      const isActive = activePage === page;
+      if (isActive && Object.keys(sections).length > 0) {
+        for (const [label, anchor] of Object.entries(sections)) {
+          html += `<a href="${page}#${anchor}" class="active">${label}</a>`;
+        }
+      } else {
+        const firstSection = Object.values(sections)[0];
+        const href = firstSection ? `${page}#${firstSection}` : page;
+        const cls = isActive ? 'active' : '';
+        const displayLabel = partLabel.replace(/Part \d+: /, '');
+        html += `<a href="${href}" class="${cls}">${displayLabel}</a>`;
+      }
+    }
+  }
+
+  const sidebar = document.createElement('nav');
+  sidebar.className = 'sidebar';
+  sidebar.innerHTML = html;
+  document.body.prepend(sidebar);
+
+  // Highlight on scroll
+  if (activePage) {
+    const links = sidebar.querySelectorAll('a');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          links.forEach(l => l.classList.remove('current'));
+          const match = sidebar.querySelector(`a[href="${activePage}#${entry.target.id}"]`);
+          if (match) match.classList.add('current');
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('h2[id], h3[id]').forEach(el => observer.observe(el));
+  }
+}
+
+// Quiz engine with AI grading
+
+const DEFAULT_MODEL = "gpt-4o-mini";
+
+function getApiKey() {
+  return localStorage.getItem("openai_api_key");
+}
+
+function getModel() {
+  return localStorage.getItem("openai_model") || DEFAULT_MODEL;
+}
+
+function showKeyPrompt() {
+  const existing = getApiKey() || "";
+  const model = getModel();
+  const overlay = document.createElement("div");
+  overlay.id = "key-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:999;";
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:450px;width:90%;">
+      <h3 style="color:var(--accent);margin-bottom:1rem;">OpenAI API Key</h3>
+      <p style="color:var(--muted);margin-bottom:1rem;font-size:0.9rem;">Your key is stored in your browser's localStorage only. Never sent anywhere except OpenAI's API.</p>
+      <input id="key-input" type="password" value="${existing}" placeholder="sk-..." style="width:100%;padding:0.6rem;background:var(--code-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-family:monospace;margin-bottom:1rem;">
+      <label style="color:var(--muted);font-size:0.85rem;display:block;margin-bottom:0.3rem;">Model</label>
+      <select id="model-select" style="width:100%;padding:0.5rem;background:var(--code-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;margin-bottom:1rem;">
+        <option value="gpt-4o-mini" ${model==="gpt-4o-mini"?"selected":""}>gpt-4o-mini (cheapest)</option>
+        <option value="gpt-4o" ${model==="gpt-4o"?"selected":""}>gpt-4o</option>
+        <option value="gpt-5.4" ${model==="gpt-5.4"?"selected":""}>gpt-5.4</option>
+      </select>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="quiz-btn" onclick="saveKey()">Save</button>
+        <button class="quiz-btn reveal" onclick="document.getElementById('key-overlay').remove()">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById("key-input").focus();
+}
+
+function saveKey() {
+  const key = document.getElementById("key-input").value.trim();
+  const model = document.getElementById("model-select").value;
+  if (key) localStorage.setItem("openai_api_key", key);
+  localStorage.setItem("openai_model", model);
+  document.getElementById("key-overlay").remove();
+}
+
+async function aiGrade(question, userAnswer, modelAnswer) {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: getModel(),
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are grading a software architecture quiz answer. Be encouraging but honest.
+
+When concepts are "missing", explain WHY they matter and what the student should think about — don't just list them. If the student's answer implies a concept without stating it explicitly, give them credit.
+
+Respond in this exact JSON format:
+{"score": <0-100>, "grade": "<emoji> <short label>", "covered": ["concept 1", "concept 2"], "missing": ["concept 3"], "feedback": "<2-3 sentences: acknowledge what they got right, then explain what's missing and WHY it matters for their understanding>"}`
+        },
+        {
+          role: "user",
+          content: `Question: ${question}\n\nStudent's answer: ${userAnswer}\n\nModel answer: ${modelAnswer}\n\nGrade the student's answer. Consider meaning and intent, not exact wording.`
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`${response.status} — ${err.substring(0, 200)}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices[0].message.content.trim();
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (parseErr) {
+    console.error("Failed to parse AI response:", text);
+    throw new Error("Could not parse AI response");
+  }
+}
+
+// Fallback local grading (concept groups)
+function conceptHit(input, concept) {
+  return concept.some(term => {
+    const t = term.toLowerCase();
+    if (input.includes(t)) return true;
+    const words = t.split(/\s+/);
+    if (words.length > 1) return words.every(w => input.includes(w));
+    if (t.length >= 4) {
+      const re = new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      return re.test(input);
+    }
+    return false;
+  });
+}
+
+function localGrade(input, concepts) {
+  const results = concepts.map(c => ({ label: c.label, hit: conceptHit(input, c.terms) }));
+  const hits = results.filter(r => r.hit);
+  const misses = results.filter(r => !r.hit);
+  const pct = Math.round((hits.length / results.length) * 100);
+  return { hits, misses, pct };
+}
+
+function initQuiz(questions) {
+  const container = document.getElementById('quiz-container');
+  if (!container) return;
+
+  // Settings button
+  const settings = document.createElement('div');
+  settings.style.cssText = 'text-align:right;margin-bottom:1rem;';
+  const hasKey = getApiKey();
+  settings.innerHTML = `<button class="quiz-btn" onclick="showKeyPrompt()" style="font-size:0.85rem;padding:0.4rem 0.8rem;background:${hasKey ? '#4caf50' : 'var(--accent)'};">
+    ${hasKey ? '🤖 AI Grading: ' + getModel() : '⚙️ Set API Key for AI Grading'}
+  </button>`;
+  container.appendChild(settings);
+
+  questions.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'quiz-card';
+    div.innerHTML = `
+      <h4>Question ${i + 1}</h4>
+      <p>${item.q}</p>
+      <textarea id="answer-${i}" placeholder="Type your answer here..."></textarea>
+      <br>
+      <button class="quiz-btn" onclick="checkOne(${i})">Check</button>
+      <button class="quiz-btn reveal" onclick="revealOne(${i})">Reveal Answer</button>
+      <div class="quiz-feedback" id="feedback-${i}"></div>
+    `;
+    container.appendChild(div);
+  });
+
+  window._quizQuestions = questions;
+}
+
+async function checkOne(i) {
+  const input = document.getElementById('answer-' + i).value;
+  const fb = document.getElementById('feedback-' + i);
+  const item = window._quizQuestions[i];
+
+  if (!input.trim()) {
+    fb.className = 'quiz-feedback show';
+    fb.innerHTML = '<span class="miss">Write your answer first!</span>';
+    return 0;
+  }
+
+  // Try AI grading first
+  if (getApiKey()) {
+    fb.className = 'quiz-feedback show';
+    fb.innerHTML = '<span style="color:var(--muted);">🤖 Checking with AI...</span>';
+
+    try {
+      const result = await aiGrade(item.q, input, item.answer);
+      if (result) {
+        let color;
+        if (result.score >= 80) color = '#4caf50';
+        else if (result.score >= 50) color = '#f0a500';
+        else color = '#e94560';
+
+        let html = `<div class="score" style="color:${color}">${result.grade} — ${result.score}%</div>`;
+        if (result.covered?.length) html += `<p class="hit">✓ You covered: ${result.covered.join(', ')}</p>`;
+        if (result.missing?.length) html += `<p class="miss">✗ Missing: ${result.missing.join(', ')}</p>`;
+        if (result.feedback) html += `<p style="color:var(--text);margin-top:0.5rem;">${result.feedback}</p>`;
+        html += `<div class="model-answer"><strong>Model answer:</strong> ${item.answer}</div>`;
+
+        fb.innerHTML = html;
+        return result.score;
+      }
+    } catch (e) {
+      console.error("AI grading failed:", e);
+      // Show error but still fall back to local
+      let html = `<p style="color:var(--accent);margin-bottom:0.8rem;">⚠️ AI grading failed: ${e.message}<br><small style="color:var(--muted);">Using local grading instead. Check browser console (F12) for details. Make sure your API key is valid and the model name is correct.</small></p>`;
+
+      // Fall through to local grading below
+      const inputLower = input.toLowerCase();
+      const { hits, misses, pct } = localGrade(inputLower, item.concepts);
+      let grade, color;
+      if (pct >= 80) { grade = '🟢 Excellent!'; color = '#4caf50'; }
+      else if (pct >= 50) { grade = '🟡 Good, but missing some points'; color = '#f0a500'; }
+      else { grade = '🔴 Needs work'; color = '#e94560'; }
+      html += `<div class="score" style="color:${color}">${grade} — ${pct}% (local check)</div>`;
+      if (hits.length > 0) html += `<p class="hit">✓ You covered: ${hits.map(h => h.label).join(', ')}</p>`;
+      if (misses.length > 0) html += `<p class="miss">✗ Missing: ${misses.map(m => m.label).join(', ')}</p>`;
+      html += `<div class="model-answer"><strong>Model answer:</strong> ${item.answer}</div>`;
+      fb.className = 'quiz-feedback show';
+      fb.innerHTML = html;
+      return pct;
+    }
+  }
+
+  // Fallback: local concept matching
+  const inputLower = input.toLowerCase();
+  const { hits, misses, pct } = localGrade(inputLower, item.concepts);
+
+  let grade, color;
+  if (pct >= 80) { grade = '🟢 Excellent!'; color = '#4caf50'; }
+  else if (pct >= 50) { grade = '🟡 Good, but missing some points'; color = '#f0a500'; }
+  else { grade = '🔴 Needs work'; color = '#e94560'; }
+
+  let html = `<div class="score" style="color:${color}">${grade} — ${pct}% of key concepts covered</div>`;
+  if (hits.length > 0) html += `<p class="hit">✓ You covered: ${hits.map(h => h.label).join(', ')}</p>`;
+  if (misses.length > 0) html += `<p class="miss">✗ Missing: ${misses.map(m => m.label).join(', ')}</p>`;
+  html += `<div class="model-answer"><strong>Model answer:</strong> ${item.answer}</div>`;
+
+  fb.className = 'quiz-feedback show';
+  fb.innerHTML = html;
+  return pct;
+}
+
+function revealOne(i) {
+  const fb = document.getElementById('feedback-' + i);
+  fb.className = 'quiz-feedback show';
+  fb.innerHTML = `<div class="model-answer" style="border:none;padding:0;margin:0;"><strong>Model answer:</strong> ${window._quizQuestions[i].answer}</div>`;
+}
+
+async function checkAll() {
+  let total = 0, answered = 0;
+  for (let i = 0; i < window._quizQuestions.length; i++) {
+    const input = document.getElementById('answer-' + i).value.trim();
+    if (input) {
+      const score = await checkOne(i);
+      total += (score || 0);
+      answered++;
+    } else { await checkOne(i); }
+  }
+  if (answered > 0) {
+    const el = document.getElementById('overall-score');
+    el.style.display = 'block';
+    el.textContent = `Overall: ${Math.round(total / answered)}% across ${answered} question${answered > 1 ? 's' : ''}`;
+  }
+}
+
+function revealAll() {
+  window._quizQuestions.forEach((_, i) => revealOne(i));
+}

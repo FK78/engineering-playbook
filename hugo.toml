@@ -7,6 +7,33 @@ proxy = "direct"
 path = "github.com/google/docsy"
 theme = 'docsy'
 
+[params]
+  description = "Software architecture patterns, solutions, and concepts"
+  offlineSearch = true
+
+  [params.ui]
+    sidebar_menu_compact = true
+    sidebar_menu_foldable = true
+    sidebar_search_disable = false
+    breadcrumb_disable = false
+
+[markup]
+  [markup.highlight]
+    style = "dracula"
+    lineNos = false
+    noClasses = false
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+ignoreLogs = ['warning-goldmark-raw-html', 'deprecated']
+
 [caches]
   [caches.images]
     dir = ':cacheDir/images'
+
+[menu]
+  [[menu.main]]
+    name = "Lessons"
+    url = "/lessons/"
+    weight = 1
