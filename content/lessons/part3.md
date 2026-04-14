@@ -740,6 +740,83 @@ events table:
 
 Full history. You can reconstruct the order at any point in time.
 
+<details>
+<summary><strong>🔍 Dry Run: Watch Event Sourcing Step by Step</strong></summary>
+
+**Step 1 — User creates an order:**
+
+| # | Event | Data |
+|---|---|---|
+| 1 | OrderCreated | `{ customerId: "cust-42" }` |
+
+State after replay → `Order { status: "draft", items: [], total: 0 }`
+
+**Step 2 — Adds a Widget (£29.99 × 2):**
+
+| # | Event | Data |
+|---|---|---|
+| 1 | OrderCreated | `{ customerId: "cust-42" }` |
+| 2 | ItemAdded | `{ productId: "widget", qty: 2, price: 29.99 }` |
+
+State after replay → `Order { status: "draft", items: [widget×2], total: 0 }`
+
+**Step 3 — Adds a Gadget (£15.00 × 1):**
+
+| # | Event | Data |
+|---|---|---|
+| 1 | OrderCreated | `{ customerId: "cust-42" }` |
+| 2 | ItemAdded | `{ productId: "widget", qty: 2, price: 29.99 }` |
+| 3 | ItemAdded | `{ productId: "gadget", qty: 1, price: 15.00 }` |
+
+State after replay → `Order { status: "draft", items: [widget×2, gadget×1], total: 0 }`
+
+**Step 4 — Submits the order:**
+
+| # | Event | Data |
+|---|---|---|
+| 1 | OrderCreated | `{ customerId: "cust-42" }` |
+| 2 | ItemAdded | `{ productId: "widget", qty: 2, price: 29.99 }` |
+| 3 | ItemAdded | `{ productId: "gadget", qty: 1, price: 15.00 }` |
+| 4 | OrderSubmitted | `{ total: 74.98 }` |
+
+State after replay → `Order { status: "submitted", items: [widget×2, gadget×1], total: 74.98 }`
+
+**Step 5 — Payment taken:**
+
+| # | Event | Data |
+|---|---|---|
+| 1–4 | ... | (same as above) |
+| 5 | PaymentTaken | `{ amount: 74.98 }` |
+
+State after replay → `Order { status: "paid", total: 74.98 }`
+
+**Step 6 — Shipped:**
+
+| # | Event | Data |
+|---|---|---|
+| 1–5 | ... | (same as above) |
+| 6 | OrderShipped | `{ trackingId: "XYZ-789" }` |
+
+State after replay → `Order { status: "shipped", total: 74.98 }`
+
+**The power — replay to any point:**
+
+```typescript
+// "What did the order look like before payment?"
+const events = await eventStore.getEvents("order-123");
+const beforePayment = events.slice(0, 4); // events 1-4 only
+Order.fromEvents("order-123", beforePayment);
+// → Order { status: "submitted", total: 74.98 }
+
+// "What about when it was just a draft with one item?"
+Order.fromEvents("order-123", events.slice(0, 2));
+// → Order { status: "draft", items: [widget×2] }
+```
+
+**Traditional DB at this point:** One row — `{ status: "shipped", total: 74.98 }`. No idea what happened in between.
+
+</details>
+
 ### Implementation
 
 <span class="label label-ts">TypeScript</span>
