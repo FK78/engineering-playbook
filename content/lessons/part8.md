@@ -64,6 +64,13 @@ case_studies:
       - name: "Hybrid — CRDT Client + Event-Sourced Server"
         description: "Use Yjs on the client for local editing and conflict resolution. The server receives CRDT sync updates and also writes each change as an event to an append-only event store (DynamoDB Streams or Kafka). The event store provides the 7-year audit trail and enables point-in-time document reconstruction. Current document state is materialized into S3 on every save. WebSocket connections handle real-time sync, and a presence service (Redis) tracks cursors. For offline support, the client's Yjs document syncs its accumulated changes when reconnecting."
         trade_off: "Combines the best of both: CRDTs handle the hard problem of conflict resolution and offline support, while event sourcing provides the audit trail and point-in-time recovery the compliance team needs. But it's the most complex architecture — the team must understand both CRDTs and event sourcing, and there are two representations of truth (CRDT state and event log) that must stay consistent. The 12-week timeline is aggressive for this approach."
+interactive_cases:
+  - title: "The Millions of Users Founder"
+    type: "great-unknown"
+    difficulty: "⭐⭐"
+    brief: "A startup founder has reached out for architecture advice. They have a bold vision but very little detail. Your job is to ask the right questions before proposing any solution."
+    opening: "We need to build a system that can handle millions of users."
+    hidden_facts: "It's a ticket marketplace for live events. Currently pre-launch with 0 users. Team of 2 developers. $50K remaining runway (3 months). 'Millions of users' is their 5-year vision, not current need. First event is in 6 weeks with expected 5,000 ticket buyers. Real concurrent load will be ~1,000 users during ticket drops. They haven't built anything yet. They're considering microservices because 'that's what Netflix uses'."
 ---
 
 # Part 8: System Design Practice
@@ -654,3 +661,7 @@ System design is not about memorising solutions — it is about developing the j
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

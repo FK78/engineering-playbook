@@ -101,6 +101,14 @@ case_studies:
       - name: "Partition by Tenant with PostgreSQL Table Partitioning"
         description: "Convert the events table (and other large tables) to use PostgreSQL declarative partitioning with tenant_id as the partition key. Each tenant's data lives in its own physical partition. PostgreSQL's partition pruning ensures that MegaCorp's queries only scan MegaCorp's partition, not the entire table. Large tenants can have their partitions on faster storage (io2 volumes). No application changes needed — the partitioning is transparent to SQL queries."
         trade_off: "Elegant solution that keeps a single database while providing physical isolation of data. Partition pruning eliminates cross-tenant interference for most queries. But PostgreSQL has practical limits on partition count (500 tenants = 500 partitions per table, which can slow planning), partition maintenance (adding/removing tenants requires DDL), and some queries that span all partitions (admin dashboards) become slower. Works well up to ~1,000 tenants but may need re-evaluation beyond that."
+interactive_cases:
+  - title: "The Database Performance Report"
+    type: "parade-of-facts"
+    difficulty: "⭐⭐"
+    brief: "Your SaaS platform's database is struggling and the team has compiled a comprehensive performance report. You need to cut through the noise and identify the real bottlenecks."
+    opening: "Here's what we're seeing: 47 tables, largest table has 800M rows, average query time 340ms, 12 queries over 5 seconds, connection pool at 95% capacity, 3TB database size, read/write ratio 92:8, most expensive query is a dashboard JOIN across 6 tables, indexes total 400GB, autovacuum running every 2 minutes, replication lag 45 seconds, the DBA quit last month, we're on PostgreSQL 12 (3 versions behind), and the CEO wants to migrate to MongoDB because 'it's faster'. What should we focus on?"
+    key_issues: "The 6-table dashboard JOIN (denormalize/CQRS), connection pool exhaustion, replication lag indicating write pressure"
+    red_herrings: "CEO's MongoDB suggestion, PostgreSQL version (not urgent), autovacuum frequency (normal for this size), DBA quitting (organizational not technical)"
 ---
 
 Data architecture is the foundation every other architectural decision rests on. Choose the wrong database, ignore caching, or misunderstand consistency trade-offs, and no amount of clever application code will save you. This lesson covers the core decisions you'll face when designing data layers for real systems.
@@ -943,3 +951,7 @@ async def transfer(from_id: str, to_id: str, amount: float) -> None:
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

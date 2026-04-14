@@ -91,6 +91,13 @@ case_studies:
       - name: "Synthetic Transaction Profiling"
         description: "Build a synthetic checkout transaction that runs every 60 seconds, measuring end-to-end latency and latency at each hop. Use a simple script that calls each service in sequence, recording timestamps. Compare synthetic results with real user traffic to isolate whether the issue is load-dependent. Add network-level monitoring (VPC flow logs, ECS task metrics) to check for infrastructure bottlenecks."
         trade_off: "Can be built in days without modifying any service code. Quickly reveals whether the problem is load-dependent or constant. But synthetic transactions may not reproduce the exact conditions causing slowness (e.g., specific product combinations, cache misses). Doesn't provide per-request visibility for real user traffic. Best as a quick diagnostic tool, not a long-term observability solution."
+interactive_cases:
+  - title: "The Angry Customers Mystery"
+    type: "great-unknown"
+    difficulty: "⭐⭐"
+    brief: "A VP of Engineering says 'We keep having outages and our customers are angry.' That's all they tell you. Your job is to ask the right questions to uncover the systemic issues causing repeated failures."
+    opening: "Thanks for meeting with us. We're in trouble — we keep having outages and our customers are furious. We've had three major incidents in the last month and honestly, we don't even fully understand why. Can you help us figure out what's going on?"
+    hidden_facts: "15 microservices on ECS. No circuit breakers. Services retry failed calls infinitely with no backoff. One slow database query in the user service cascades to all services. No distributed tracing. Monitoring is basic CloudWatch CPU/memory only. Last 3 outages were all cascading failures triggered by different root causes. Team of 8, no SRE."
 ---
 
 ## CAP Theorem
@@ -648,3 +655,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

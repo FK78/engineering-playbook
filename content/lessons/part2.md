@@ -91,6 +91,14 @@ case_studies:
       - name: "Modular Monolith with Internal APIs"
         description: "Keep one deployable unit but enforce strict module boundaries. Each team's code lives in a separate module with a defined internal API. The Product model is split into three module-specific models. Cross-module access goes through service interfaces, never direct table access. A shared kernel contains only product_id and name."
         trade_off: "Eliminates merge conflicts and enforces boundaries without distributed systems complexity. But requires tooling to enforce module boundaries (linter rules, architecture tests). Doesn't solve the single-database bottleneck if one team's queries are slow."
+interactive_cases:
+  - title: "The Marketplace API Brief"
+    type: "parade-of-facts"
+    difficulty: "⭐⭐"
+    brief: "A product manager dumps a 500-word brief about building a new API for a marketplace. It's packed with details — user counts, revenue targets, tech stack preferences, competitor analysis, team size, office locations, and the CEO's favourite programming language. Your job is to cut through the noise and identify what actually matters architecturally."
+    opening: "Hey! So excited to kick this off. Here's the brief for our new marketplace API. We have 50,000 buyers, 3,000 sellers, and 200 admin users. Revenue target is $2M ARR by Q4. The CEO loves Rust but the team knows TypeScript. Our main competitor uses Go with gRPC. We have teams in London and Berlin — 12 engineers total. We need buyers to browse products, sellers to manage inventory, and admins to handle disputes. Oh, and we're planning to open the API to third-party developers next year. The Product model is used by all three teams but they each need different fields. What do you think?"
+    key_issues: "Different data needs per client type (BFF/GraphQL decision), Product bounded context conflict, public API versioning strategy"
+    red_herrings: "CEO's language preference, office locations, competitor's tech stack, revenue targets"
 ---
 
 ## REST Fundamentals
@@ -563,3 +571,7 @@ class ShippingCustomerAdapter {
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

@@ -95,6 +95,13 @@ case_studies:
       - name: "Priority-Based Rewrite of Critical Paths"
         description: "Identify the 20-30 endpoints that handle sensitive data (patient records, payments, authentication) and rewrite them with proper layering, input validation, and audit logging. Leave the remaining 170+ endpoints as-is until the security audit passes."
         trade_off: "Fastest path to passing the security audit and protecting patient data. But creates a two-tier codebase where critical paths are clean and everything else is legacy. Risk of the 'everything else' never getting cleaned up."
+interactive_cases:
+  - title: "The Slow App Mystery"
+    type: "great-unknown"
+    difficulty: "⭐⭐"
+    brief: "A CTO calls you saying 'our app is slow and the team can't ship features fast enough.' That's all they tell you. Your job is to ask the right questions to uncover the real problem."
+    opening: "Hi, thanks for taking this call. Look, I'll be honest — things aren't going well. Our app is slow, and the team just can't ship features fast enough. We need help figuring out what's wrong."
+    hidden_facts: "The app is a 3-year-old Node.js monolith. 15 developers. Controllers have 2000+ lines with SQL, business logic, and HTTP handling mixed together. No tests. Deploy takes 4 hours. The 'slowness' is actually developer velocity, not runtime performance. The database is fine."
 ---
 
 ## Layered Architecture
@@ -634,3 +641,7 @@ test("getOrder returns order", async () => {
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

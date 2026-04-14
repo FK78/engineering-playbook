@@ -101,6 +101,14 @@ case_studies:
       - name: "AWS Elastic Beanstalk with Managed Deployments"
         description: "Migrate the Django app to Elastic Beanstalk, which provides managed EC2 instances, auto-scaling, rolling deployments, and one-click rollback out of the box. Configure rolling deployments with batch size of 2 (25% at a time) and health-check-based rollback. Use Beanstalk's .ebextensions for environment configuration. Database migrations run via a leader_only container command."
         trade_off: "The fastest path to managed deployments — Beanstalk abstracts away most infrastructure concerns and the team can deploy via git push or the EB CLI. But Beanstalk is opinionated and constraining — customizing networking, scaling policies, or adding sidecars is harder. Teams often outgrow Beanstalk within 1-2 years and face another migration."
+interactive_cases:
+  - title: "Live Streaming Capacity Estimation"
+    type: "back-of-envelope"
+    difficulty: "⭐⭐"
+    brief: "Your company is hosting a major live streaming event and needs to estimate server capacity. The engineering VP wants a back-of-envelope calculation before approving the infrastructure budget."
+    opening: "We've got a live event coming up — 500,000 concurrent viewers, each consuming a 4Mbps video stream. How many servers do we need? Walk me through your math."
+    answer_range: "50-200 servers depending on CDN assumptions, server capacity (10Gbps typical), and CDN offload percentage"
+    key_assumptions: "CDN offload (90-99% of traffic), origin server bandwidth, geographic distribution, redundancy factor"
 ---
 
 ## Load Balancing
@@ -720,3 +728,7 @@ health.get("/health", async (req, res) => {
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

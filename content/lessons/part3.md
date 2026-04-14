@@ -91,6 +91,14 @@ case_studies:
       - name: "Dual-Write with Immutable Audit Log"
         description: "Write current state to a normalized PostgreSQL database for the dashboard (fast reads, familiar queries). Simultaneously write every change to an immutable audit log (DynamoDB with no delete permissions, or S3 with object lock). The dashboard reads from PostgreSQL; compliance queries the audit log. A reconciliation job periodically verifies the two are consistent."
         trade_off: "Simplest mental model — current state in one place, audit trail in another. Each store is optimized for its purpose. But dual-writes risk inconsistency if one write succeeds and the other fails (need transactional outbox or change data capture). The reconciliation job adds operational overhead. Two sources of truth is inherently fragile."
+interactive_cases:
+  - title: "CQRS Event Throughput Estimation"
+    type: "back-of-envelope"
+    difficulty: "⭐⭐"
+    brief: "Estimate how many events per second a CQRS system would need to handle for a food delivery app like Deliveroo operating in 10 cities. Walk through your assumptions step by step."
+    opening: "We're designing the event infrastructure for a food delivery platform launching in 10 cities. Before we pick between Kafka, SQS, or Kinesis, we need a rough estimate of event throughput. Can you walk me through a back-of-envelope calculation for how many events per second we'd need to handle at peak?"
+    answer_range: "500-5000 events/second depending on assumptions"
+    key_assumptions: "orders per city per hour, events per order lifecycle (created, accepted, picked up, delivered, rated = ~5-8 events), peak multiplier"
 ---
 
 ## Event-Driven Architecture
@@ -956,3 +964,7 @@ These patterns often combine:
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}

@@ -101,6 +101,14 @@ case_studies:
       - name: "Zero-Trust Dev Environment with Ephemeral Credentials"
         description: "Eliminate all long-lived credentials entirely. Developers authenticate via SSO and receive temporary AWS credentials (1-hour expiry) through aws-vault or IAM Identity Center. CI/CD pipelines use OIDC federation with GitHub Actions (no stored secrets). All infrastructure provisioning goes through Terraform with a CI pipeline — no developer has direct console or CLI access to production."
         trade_off: "The strongest security posture — leaked credentials expire before they can be exploited. But it's the most disruptive to implement, requires SSO infrastructure, and developers lose the ability to quickly experiment in AWS directly. For a fast-moving startup, this friction may slow down iteration."
+interactive_cases:
+  - title: "The Security Audit Report"
+    type: "parade-of-facts"
+    difficulty: "⭐⭐"
+    brief: "A security consultant has just delivered a 3-page audit report for your web application. Your CTO wants you to identify the critical issues and propose a prioritized remediation plan by end of day."
+    opening: "Here's the full audit report. We found: API keys embedded in frontend JavaScript, no rate limiting on any endpoint, passwords hashed with MD5, CORS set to *, admin panel accessible without VPN, 47 npm packages with known vulnerabilities, no CSP headers, logs contain full credit card numbers, JWT tokens never expire, the office WiFi password is 'password123', the team uses Slack for sharing credentials, and the CEO wants to add 'Login with Facebook'. Where do you want to start?"
+    key_issues: "Credentials in frontend code, no rate limiting, plaintext secrets in logs, JWT never expiring"
+    red_herrings: "Office WiFi password, number of npm vulnerabilities (noise without severity context), CEO's Facebook login request"
 ---
 
 ## Authentication vs Authorization
@@ -732,3 +740,7 @@ res.cookie("session", token, {
 ## Scenario Challenges
 
 {{< case-studies >}}
+
+## Interactive Case Studies
+
+{{< interactive-cases >}}
