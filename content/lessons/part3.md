@@ -817,7 +817,58 @@ Order.fromEvents("order-123", events.slice(0, 2));
 
 </details>
 
-### Implementation — Creating & Storing Events
+<details>
+<summary><strong>🔄 Dry Run: Replaying Events to Rebuild State</strong></summary>
+
+Someone calls `loadOrder("order-123")`. The event store returns all 6 events. The replay function processes them one at a time:
+
+```
+Start: Order { status: undefined, items: [], total: 0 }
+```
+
+**Event 1: OrderCreated** `{ customerId: "cust-42" }`
+```
+apply → this.status = "draft"
+State:  Order { status: "draft", items: [], total: 0 }
+```
+
+**Event 2: ItemAdded** `{ productId: "widget", qty: 2, price: 29.99 }`
+```
+apply → this.items.push({ widget, 2, 29.99 })
+State:  Order { status: "draft", items: [widget×2], total: 0 }
+```
+
+**Event 3: ItemAdded** `{ productId: "gadget", qty: 1, price: 15.00 }`
+```
+apply → this.items.push({ gadget, 1, 15.00 })
+State:  Order { status: "draft", items: [widget×2, gadget×1], total: 0 }
+```
+
+**Event 4: OrderSubmitted** `{ total: 74.98 }`
+```
+apply → this.status = "submitted"; this.total = 74.98
+State:  Order { status: "submitted", items: [widget×2, gadget×1], total: 74.98 }
+```
+
+**Event 5: PaymentTaken** `{ amount: 74.98 }`
+```
+apply → this.status = "paid"
+State:  Order { status: "paid", items: [widget×2, gadget×1], total: 74.98 }
+```
+
+**Event 6: OrderShipped** `{ trackingId: "XYZ-789" }`
+```
+apply → this.status = "shipped"
+State:  Order { status: "shipped", items: [widget×2, gadget×1], total: 74.98 }
+```
+
+**Done.** The order is fully reconstructed from its events. No traditional database row was needed.
+
+**Want the state at step 4?** Replay only events 1 to 4. Stop there. You get `{ status: "submitted", total: 74.98 }`.
+
+**Want to debug why the total is wrong?** Walk through each ItemAdded event and check the prices. The full history is right there.
+
+</details>
 
 The domain object **produces events** when actions happen, and the event store **appends them**:
 
