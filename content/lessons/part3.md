@@ -817,7 +817,89 @@ Order.fromEvents("order-123", events.slice(0, 2));
 
 </details>
 
-### Implementation
+### Implementation — Creating & Storing Events
+
+The domain object **produces events** when actions happen, and the event store **appends them**:
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+class Order {
+  private uncommittedEvents: OrderEvent[] = [];
+
+  // Actions produce events — not direct state changes
+  static create(id: string, customerId: string): Order {
+    const order = new Order();
+    order.id = id;
+    order.addEvent({ type: "OrderCreated", customerId });
+    return order;
+  }
+
+  addItem(productId: string, quantity: number, price: number) {
+    if (this.status !== "draft") throw new Error("Cannot modify submitted order");
+    this.addEvent({ type: "ItemAdded", productId, quantity, price });
+  }
+
+  submit() {
+    if (this.items.length === 0) throw new Error("Cannot submit empty order");
+    this.addEvent({ type: "OrderSubmitted", total: this.calculateTotal() });
+  }
+
+  // Each action creates an event AND applies it to current state
+  private addEvent(event: OrderEvent) {
+    this.uncommittedEvents.push(event);
+    this.apply(event);  // update in-memory state
+  }
+
+  getUncommittedEvents(): OrderEvent[] {
+    return this.uncommittedEvents;
+  }
+}
+
+// The event store — append-only, never update or delete
+class EventStore {
+  async save(aggregateId: string, events: OrderEvent[]) {
+    for (const event of events) {
+      await db.query(
+        "INSERT INTO events (aggregate_id, type, data, timestamp) VALUES ($1, $2, $3, NOW())",
+        [aggregateId, event.type, JSON.stringify(event)]
+      );
+    }
+  }
+
+  async getEvents(aggregateId: string): Promise<OrderEvent[]> {
+    const result = await db.query(
+      "SELECT data FROM events WHERE aggregate_id = $1 ORDER BY timestamp",
+      [aggregateId]
+    );
+    return result.rows.map(r => JSON.parse(r.data));
+  }
+}
+
+// Putting it together — a command handler
+class PlaceOrderHandler {
+  async handle(cmd: { customerId: string; items: CartItem[] }) {
+    // 1. Create the order (produces OrderCreated event)
+    const order = Order.create(generateId(), cmd.customerId);
+
+    // 2. Add items (produces ItemAdded events)
+    for (const item of cmd.items) {
+      order.addItem(item.productId, item.quantity, item.price);
+    }
+
+    // 3. Submit (produces OrderSubmitted event)
+    order.submit();
+
+    // 4. Save all events to the store
+    await this.eventStore.save(order.id, order.getUncommittedEvents());
+    // Events saved: [OrderCreated, ItemAdded, ItemAdded, OrderSubmitted]
+  }
+}
+```
+
+### Implementation — Replaying Events
+
+To load an order, fetch its events and replay them:
 
 <span class="label label-ts">TypeScript</span>
 
