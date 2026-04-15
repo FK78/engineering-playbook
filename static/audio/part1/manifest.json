@@ -1,0 +1,237 @@
+[
+  {
+    "title": "Layered Architecture",
+    "parent": null,
+    "file": "layered-architecture.ogg"
+  },
+  {
+    "title": "The Rules",
+    "parent": "Layered Architecture",
+    "file": "layered-architecture-the-rules.ogg"
+  },
+  {
+    "title": "Why This Matters",
+    "parent": "Layered Architecture",
+    "file": "layered-architecture-why-this-matters.ogg"
+  },
+  {
+    "title": "Real-World Example",
+    "parent": "Layered Architecture",
+    "file": "layered-architecture-real-world-example.ogg"
+  },
+  {
+    "title": "When It Breaks Down",
+    "parent": "Layered Architecture",
+    "file": "layered-architecture-when-it-breaks-down.ogg"
+  },
+  {
+    "title": "Coupling",
+    "parent": null,
+    "file": "coupling.ogg"
+  },
+  {
+    "title": "Spectrum: Tight \u2192 Loose",
+    "parent": "Coupling",
+    "file": "coupling-spectrum-tight-loose.ogg"
+  },
+  {
+    "title": "How to Spot Tight Coupling",
+    "parent": "Coupling",
+    "file": "coupling-how-to-spot-tight-coupling.ogg"
+  },
+  {
+    "title": "Fixing Tight Coupling \u2014 Worked Example",
+    "parent": null,
+    "file": "fixing-tight-coupling-worked-example.ogg"
+  },
+  {
+    "title": "What If a New Gateway Needs More Values?",
+    "parent": "Fixing Tight Coupling \u2014 Worked Example",
+    "file": "fixing-tight-coupling-worked-example-what-if-a-new-gateway-needs-more-values.ogg"
+  },
+  {
+    "title": "How Do You Design the Interface on Day 1?",
+    "parent": "Fixing Tight Coupling \u2014 Worked Example",
+    "file": "fixing-tight-coupling-worked-example-how-do-you-design-the-interface-on-day-1.ogg"
+  },
+  {
+    "title": "Testing Loosely Coupled Code",
+    "parent": null,
+    "file": "testing-loosely-coupled-code.ogg"
+  },
+  {
+    "title": "Types of Test Doubles",
+    "parent": "Testing Loosely Coupled Code",
+    "file": "testing-loosely-coupled-code-types-of-test-doubles.ogg"
+  },
+  {
+    "title": "Are Mocks Reliable? The Testing Pyramid",
+    "parent": null,
+    "file": "are-mocks-reliable-the-testing-pyramid.ogg"
+  },
+  {
+    "title": "Cohesion",
+    "parent": null,
+    "file": "cohesion.ogg"
+  },
+  {
+    "title": "Separation of Concerns",
+    "parent": null,
+    "file": "separation-of-concerns.ogg"
+  },
+  {
+    "title": "DAO \u2014 Data Access Object",
+    "parent": null,
+    "file": "dao-data-access-object.ogg"
+  },
+  {
+    "title": "DAO vs Repository \u2014 What's Actually Different?",
+    "parent": "DAO \u2014 Data Access Object",
+    "file": "dao-data-access-object-dao-vs-repository-whats-actually-different.ogg"
+  },
+  {
+    "title": "Repository Pattern",
+    "parent": null,
+    "file": "repository-pattern.ogg"
+  },
+  {
+    "title": "Design Patterns (GoF)",
+    "parent": null,
+    "file": "design-patterns-gof.ogg"
+  },
+  {
+    "title": "1. Factory",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-1-factory.ogg"
+  },
+  {
+    "title": "2. Strategy",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-2-strategy.ogg"
+  },
+  {
+    "title": "3. Observer",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-3-observer.ogg"
+  },
+  {
+    "title": "4. Decorator",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-4-decorator.ogg"
+  },
+  {
+    "title": "5. Adapter",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-5-adapter.ogg"
+  },
+  {
+    "title": "6. Facade",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-6-facade.ogg"
+  },
+  {
+    "title": "7. Proxy",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-7-proxy.ogg"
+  },
+  {
+    "title": "Summary",
+    "parent": "Design Patterns (GoF)",
+    "file": "design-patterns-gof-summary.ogg"
+  },
+  {
+    "title": "SOLID Principles",
+    "parent": null,
+    "file": "solid-principles.ogg"
+  },
+  {
+    "title": "1. Single Responsibility Principle (SRP)",
+    "parent": "SOLID Principles",
+    "file": "solid-principles-1-single-responsibility-principle-srp.ogg"
+  },
+  {
+    "title": "2. Open/Closed Principle (OCP)",
+    "parent": "SOLID Principles",
+    "file": "solid-principles-2-openclosed-principle-ocp.ogg"
+  },
+  {
+    "title": "3. Liskov Substitution Principle (LSP)",
+    "parent": "SOLID Principles",
+    "file": "solid-principles-3-liskov-substitution-principle-lsp.ogg"
+  },
+  {
+    "title": "4. Interface Segregation Principle (ISP)",
+    "parent": "SOLID Principles",
+    "file": "solid-principles-4-interface-segregation-principle-isp.ogg"
+  },
+  {
+    "title": "5. Dependency Inversion Principle (DIP)",
+    "parent": "SOLID Principles",
+    "file": "solid-principles-5-dependency-inversion-principle-dip.ogg"
+  },
+  {
+    "title": "SOLID Summary",
+    "parent": "SOLID Principles",
+    "file": "solid-principles-solid-summary.ogg"
+  },
+  {
+    "title": "MVC Pattern",
+    "parent": null,
+    "file": "mvc-pattern.ogg"
+  },
+  {
+    "title": "MVC in an Express API",
+    "parent": "MVC Pattern",
+    "file": "mvc-pattern-mvc-in-an-express-api.ogg"
+  },
+  {
+    "title": "Clean Architecture and Hexagonal Architecture",
+    "parent": null,
+    "file": "clean-architecture-and-hexagonal-architecture.ogg"
+  },
+  {
+    "title": "The Dependency Rule",
+    "parent": "Clean Architecture and Hexagonal Architecture",
+    "file": "clean-architecture-and-hexagonal-architecture-the-dependency-rule.ogg"
+  },
+  {
+    "title": "Hexagonal Architecture (Ports and Adapters)",
+    "parent": "Clean Architecture and Hexagonal Architecture",
+    "file": "clean-architecture-and-hexagonal-architecture-hexagonal-architecture-ports-and-adapters.ogg"
+  },
+  {
+    "title": "Clean Architecture Layers",
+    "parent": "Clean Architecture and Hexagonal Architecture",
+    "file": "clean-architecture-and-hexagonal-architecture-clean-architecture-layers.ogg"
+  },
+  {
+    "title": "When to Use This",
+    "parent": "Clean Architecture and Hexagonal Architecture",
+    "file": "clean-architecture-and-hexagonal-architecture-when-to-use-this.ogg"
+  },
+  {
+    "title": "Test-Driven Development (TDD)",
+    "parent": null,
+    "file": "test-driven-development-tdd.ogg"
+  },
+  {
+    "title": "TDD in Practice: Building an OrderValidator",
+    "parent": "Test-Driven Development (TDD)",
+    "file": "test-driven-development-tdd-tdd-in-practice-building-an-ordervalidator.ogg"
+  },
+  {
+    "title": "When TDD Works Well",
+    "parent": "Test-Driven Development (TDD)",
+    "file": "test-driven-development-tdd-when-tdd-works-well.ogg"
+  },
+  {
+    "title": "When TDD Is Less Useful",
+    "parent": "Test-Driven Development (TDD)",
+    "file": "test-driven-development-tdd-when-tdd-is-less-useful.ogg"
+  },
+  {
+    "title": "Key Takeaways",
+    "parent": null,
+    "file": "key-takeaways.ogg"
+  }
+]
