@@ -260,6 +260,116 @@ function canDeliver(msg: Message, delivered: Map<string, Message>): boolean {
 <strong>Rule of thumb:</strong> Use strong consistency for money and inventory. Use eventual consistency for social features and analytics. Use causal consistency for conversations and collaborative editing.
 </div>
 
+### Practical Consistency Patterns
+
+Strong, eventual, and causal are the theoretical models. In practice, you rarely switch the whole system to strong consistency just because one user sees stale data. Instead, you apply **targeted patterns** that fix specific problems cheaply.
+
+#### Read-Your-Own-Writes
+
+The most common consistency complaint: "I updated my profile but when I refresh, I see the old data." This happens because the write goes to the primary, but the read hits a replica that hasn't caught up yet.
+
+```text
+User updates profile:
+  Browser → API → Primary DB (write succeeds)
+
+User refreshes page:
+  Browser → API → Replica DB (still has old data!) ← stale read
+```
+
+The fix: after a user writes, route **that user's** subsequent reads to the primary (or a replica known to be up to date). Everyone else still reads from replicas.
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+class UserProfileService {
+  constructor(
+    private primaryDb: Database,
+    private replicaDb: Database,
+  ) {}
+
+  async updateProfile(userId: string, data: ProfileUpdate) {
+    await this.primaryDb.query("UPDATE users SET ... WHERE id = $1", [userId]);
+
+    // Set a short-lived flag: "this user just wrote"
+    await redis.set(`recent-write:${userId}`, "1", "EX", 10); // expires in 10 seconds
+  }
+
+  async getProfile(userId: string, requestingUserId: string) {
+    // If the requesting user just wrote, read from primary
+    const recentWrite = await redis.get(`recent-write:${requestingUserId}`);
+    const db = recentWrite ? this.primaryDb : this.replicaDb;
+
+    return db.query("SELECT * FROM users WHERE id = $1", [userId]);
+  }
+}
+```
+
+<span class="label label-py">Python</span>
+
+```python
+class UserProfileService:
+    def __init__(self, primary_db, replica_db, redis_client):
+        self.primary = primary_db
+        self.replica = replica_db
+        self.redis = redis_client
+
+    async def update_profile(self, user_id: str, data: dict):
+        await self.primary.execute("UPDATE users SET ... WHERE id = $1", user_id)
+        # Flag this user as a recent writer for 10 seconds
+        await self.redis.set(f"recent-write:{user_id}", "1", ex=10)
+
+    async def get_profile(self, user_id: str, requesting_user_id: str):
+        recent_write = await self.redis.get(f"recent-write:{requesting_user_id}")
+        db = self.primary if recent_write else self.replica
+        return await db.fetch_one("SELECT * FROM users WHERE id = $1", user_id)
+```
+
+The key insight: only the user who just wrote gets routed to the primary. Everyone else still reads from cheap, scalable replicas. You get the consistency where it matters without paying the cost everywhere.
+
+```text
+User who just updated:
+  Browser → API → checks Redis → recent write found → Primary DB ✓ (fresh data)
+
+Other users:
+  Browser → API → checks Redis → no recent write → Replica DB (fast, scalable)
+```
+
+#### Monotonic Reads
+
+A different problem: a user refreshes twice and sees data go *backwards*. First refresh hits replica A (up to date), second refresh hits replica B (behind). Their order count goes from 5 to 4 and back to 5.
+
+The fix: pin a user to the same replica for the duration of their session. This is called **sticky sessions** or **session affinity**.
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+function getReplicaForUser(userId: string, replicas: Database[]): Database {
+  // Simple consistent hash: same user always hits same replica
+  const hash = userId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return replicas[hash % replicas.length];
+}
+
+async function getOrders(userId: string) {
+  const replica = getReplicaForUser(userId, replicas);
+  return replica.query("SELECT * FROM orders WHERE customer_id = $1", [userId]);
+}
+```
+
+The user always reads from the same replica, so they never see data go backwards. Different users may see slightly different states, but each user's view is consistent with itself.
+
+#### When to Use Which Pattern
+
+| Problem | Pattern | How it works | Cost |
+|---|---|---|---|
+| "I updated but see old data" | Read-your-own-writes | Route writer's reads to primary for a few seconds | One Redis lookup per read |
+| "Data goes backwards on refresh" | Monotonic reads | Pin user to same replica (sticky session) | Slightly uneven replica load |
+| "Replies appear before the message" | Causal consistency | Track dependencies, deliver in order | Vector clocks or logical timestamps |
+| "Balance must always be accurate" | Strong consistency | All reads go to primary | Slower reads, primary is bottleneck |
+
+<div class="callout info">
+  <strong>You can mix these per feature.</strong> Profile updates use read-your-own-writes. The activity feed uses eventual consistency. Payments use strong consistency. Each feature gets the cheapest consistency model that's correct for its use case.
+</div>
+
 ---
 
 ## Consensus
