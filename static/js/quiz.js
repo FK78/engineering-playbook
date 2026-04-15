@@ -82,56 +82,127 @@ function buildSidebar(activePage) {
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 
+// Migrate old localStorage keys
+(function() {
+  var oldKey = localStorage.getItem("openai_api_key");
+  if (oldKey && !localStorage.getItem("ai_api_key")) {
+    localStorage.setItem("ai_api_key", oldKey);
+    localStorage.setItem("ai_provider", "openai");
+    var oldModel = localStorage.getItem("openai_model");
+    if (oldModel) localStorage.setItem("ai_model", oldModel);
+    localStorage.removeItem("openai_api_key");
+    localStorage.removeItem("openai_model");
+  }
+})();
+
+const PROVIDERS = {
+  openai: { name: "OpenAI", url: "https://api.openai.com/v1/chat/completions", models: ["gpt-4o-mini", "gpt-4o", "gpt-5.4"], placeholder: "sk-..." },
+  openrouter: { name: "OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", models: ["openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-sonnet-4", "google/gemini-2.5-flash", "meta-llama/llama-4-maverick"], placeholder: "sk-or-..." },
+  anthropic: { name: "Anthropic (via OpenRouter)", url: "https://openrouter.ai/api/v1/chat/completions", models: ["anthropic/claude-sonnet-4", "anthropic/claude-haiku-3.5"], placeholder: "sk-or-..." },
+  custom: { name: "Custom (OpenAI-compatible)", url: "", models: [], placeholder: "your-api-key" }
+};
+
+function getProvider() {
+  return localStorage.getItem("ai_provider") || "openai";
+}
+
 function getApiKey() {
-  return localStorage.getItem("openai_api_key");
+  return localStorage.getItem("ai_api_key");
 }
 
 function getModel() {
-  return localStorage.getItem("openai_model") || DEFAULT_MODEL;
+  return localStorage.getItem("ai_model") || DEFAULT_MODEL;
+}
+
+function getBaseUrl() {
+  var provider = getProvider();
+  if (provider === "custom") return localStorage.getItem("ai_custom_url") || "";
+  return PROVIDERS[provider]?.url || PROVIDERS.openai.url;
 }
 
 function showKeyPrompt() {
-  const existing = getApiKey() || "";
-  const model = getModel();
-  const overlay = document.createElement("div");
+  var existing = getApiKey() || "";
+  var model = getModel();
+  var provider = getProvider();
+  var customUrl = localStorage.getItem("ai_custom_url") || "";
+  var overlay = document.createElement("div");
   overlay.id = "key-overlay";
   overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:999;";
-  overlay.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:450px;width:90%;">
-      <h3 style="color:var(--accent);margin-bottom:1rem;">OpenAI API Key</h3>
-      <p style="color:var(--muted);margin-bottom:1rem;font-size:0.9rem;">Your key is stored in your browser's localStorage only. Never sent anywhere except OpenAI's API.</p>
-      <input id="key-input" type="password" value="${existing}" placeholder="sk-..." style="width:100%;padding:0.6rem;background:var(--code-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-family:monospace;margin-bottom:1rem;">
-      <label style="color:var(--muted);font-size:0.85rem;display:block;margin-bottom:0.3rem;">Model</label>
-      <select id="model-select" style="width:100%;padding:0.5rem;background:var(--code-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;margin-bottom:1rem;">
-        <option value="gpt-4o-mini" ${model==="gpt-4o-mini"?"selected":""}>gpt-4o-mini (cheapest)</option>
-        <option value="gpt-4o" ${model==="gpt-4o"?"selected":""}>gpt-4o</option>
-        <option value="gpt-5.4" ${model==="gpt-5.4"?"selected":""}>gpt-5.4</option>
-      </select>
-      <div style="display:flex;gap:0.5rem;">
-        <button class="quiz-btn" onclick="saveKey()">Save</button>
-        <button class="quiz-btn reveal" onclick="document.getElementById('key-overlay').remove()">Cancel</button>
-      </div>
-    </div>
-  `;
+  overlay.innerHTML = '<div style="background:#fff;border:1px solid #ccc;border-radius:12px;padding:2rem;max-width:480px;width:90%;color:#333;">'
+    + '<h3 style="color:#30638e;margin:0 0 0.5rem;">AI Settings</h3>'
+    + '<p style="color:#666;margin-bottom:1rem;font-size:0.85rem;">Your key is stored in your browser only. Sent only to the provider you select.</p>'
+    + '<label style="color:#555;font-size:0.85rem;display:block;margin-bottom:0.3rem;">Provider</label>'
+    + '<select id="provider-select" onchange="onProviderChange()" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;margin-bottom:0.8rem;background:#fff;color:#333;">'
+    + Object.entries(PROVIDERS).map(function(e) { return '<option value="' + e[0] + '"' + (provider===e[0]?' selected':'') + '>' + e[1].name + '</option>'; }).join('')
+    + '</select>'
+    + '<div id="custom-url-row" style="display:' + (provider==='custom'?'block':'none') + ';margin-bottom:0.8rem;">'
+    + '<label style="color:#555;font-size:0.85rem;display:block;margin-bottom:0.3rem;">API Base URL</label>'
+    + '<input id="custom-url-input" type="text" value="' + customUrl + '" placeholder="https://your-server.com/v1/chat/completions" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;font-family:monospace;font-size:0.85rem;color:#333;">'
+    + '</div>'
+    + '<label style="color:#555;font-size:0.85rem;display:block;margin-bottom:0.3rem;">API Key</label>'
+    + '<input id="key-input" type="password" value="' + existing + '" placeholder="' + (PROVIDERS[provider]?.placeholder || 'sk-...') + '" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;font-family:monospace;margin-bottom:0.8rem;color:#333;">'
+    + '<label style="color:#555;font-size:0.85rem;display:block;margin-bottom:0.3rem;">Model</label>'
+    + '<div id="model-container">' + buildModelSelect(provider, model) + '</div>'
+    + '<div style="display:flex;gap:0.5rem;margin-top:1rem;">'
+    + '<button class="quiz-btn" onclick="saveKey()">Save</button>'
+    + '<button class="quiz-btn reveal" onclick="document.getElementById(\'key-overlay\').remove()">Cancel</button>'
+    + '</div>'
+    + '</div>';
   document.body.appendChild(overlay);
   document.getElementById("key-input").focus();
 }
 
+function buildModelSelect(provider, currentModel) {
+  var p = PROVIDERS[provider];
+  if (!p || !p.models.length) {
+    return '<input id="model-input" type="text" value="' + currentModel + '" placeholder="model-name" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;font-family:monospace;color:#333;">';
+  }
+  return '<select id="model-select" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;background:#fff;color:#333;">'
+    + p.models.map(function(m) { return '<option value="' + m + '"' + (currentModel===m?' selected':'') + '>' + m + '</option>'; }).join('')
+    + '</select>';
+}
+
+function onProviderChange() {
+  var provider = document.getElementById("provider-select").value;
+  var p = PROVIDERS[provider];
+  document.getElementById("key-input").placeholder = p?.placeholder || "sk-...";
+  document.getElementById("model-container").innerHTML = buildModelSelect(provider, getModel());
+  document.getElementById("custom-url-row").style.display = provider === "custom" ? "block" : "none";
+}
+
 function saveKey() {
-  const key = document.getElementById("key-input").value.trim();
-  const model = document.getElementById("model-select").value;
-  if (key) localStorage.setItem("openai_api_key", key);
-  localStorage.setItem("openai_model", model);
+  var key = document.getElementById("key-input").value.trim();
+  var provider = document.getElementById("provider-select").value;
+  var modelEl = document.getElementById("model-select") || document.getElementById("model-input");
+  var model = modelEl ? modelEl.value.trim() : DEFAULT_MODEL;
+  if (key) localStorage.setItem("ai_api_key", key);
+  localStorage.setItem("ai_provider", provider);
+  localStorage.setItem("ai_model", model);
+  if (provider === "custom") {
+    var customUrl = document.getElementById("custom-url-input").value.trim();
+    if (customUrl) localStorage.setItem("ai_custom_url", customUrl);
+  }
   document.getElementById("key-overlay").remove();
+  // Refresh the settings button text
+  location.reload();
+}
+
+function aiHeaders() {
+  var provider = getProvider();
+  var headers = { "Content-Type": "application/json", "Authorization": "Bearer " + getApiKey() };
+  if (provider === "openrouter" || provider === "anthropic") {
+    headers["HTTP-Referer"] = window.location.origin;
+  }
+  return headers;
 }
 
 async function aiGrade(question, userAnswer, modelAnswer) {
-  const apiKey = getApiKey();
+  var apiKey = getApiKey();
   if (!apiKey) return null;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  var response = await fetch(getBaseUrl(), {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    headers: aiHeaders(),
     body: JSON.stringify({
       model: getModel(),
       temperature: 0.1,
@@ -202,7 +273,7 @@ function initQuiz(questions) {
   settings.style.cssText = 'text-align:right;margin-bottom:1rem;';
   const hasKey = getApiKey();
   settings.innerHTML = `<button class="quiz-btn" onclick="showKeyPrompt()" style="font-size:0.85rem;padding:0.4rem 0.8rem;background:${hasKey ? '#4caf50' : 'var(--accent)'};">
-    ${hasKey ? '🤖 AI Grading: ' + getModel() : '⚙️ Set API Key for AI Grading'}
+    ${hasKey ? '🤖 AI Grading: ' + PROVIDERS[getProvider()].name + ' / ' + getModel() : '⚙️ Set API Key for AI Grading'}
   </button>`;
   container.appendChild(settings);
 
@@ -375,9 +446,9 @@ async function evaluateCaseStudy(i) {
     fb.innerHTML = '<span style="opacity:0.6;">🤖 Evaluating your approach...</span>';
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch(getBaseUrl(), {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        headers: aiHeaders(),
         body: JSON.stringify({
           model: (typeof getModel === 'function' ? getModel() : "gpt-4o-mini"),
           temperature: 0.3,
@@ -588,10 +659,9 @@ async function icSend(i) {
   history.push({ role: 'user', content: text });
 
   try {
-    const apiKey = getApiKey();
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(getBaseUrl(), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      headers: aiHeaders(),
       body: JSON.stringify({
         model: (typeof getModel === 'function' ? getModel() : "gpt-4o-mini"),
         temperature: 0.4,
@@ -630,10 +700,9 @@ async function icEnd(i) {
   };
 
   try {
-    const apiKey = getApiKey();
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(getBaseUrl(), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      headers: aiHeaders(),
       body: JSON.stringify({
         model: (typeof getModel === 'function' ? getModel() : "gpt-4o-mini"),
         temperature: 0.2,
