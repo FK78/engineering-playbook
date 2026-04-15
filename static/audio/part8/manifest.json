@@ -1,0 +1,177 @@
+[
+  {
+    "title": "Introduction",
+    "parent": null,
+    "file": "introduction.ogg"
+  },
+  {
+    "title": "1. The System Design Process",
+    "parent": null,
+    "file": "1-the-system-design-process.ogg"
+  },
+  {
+    "title": "Phase 1: Requirements Gathering",
+    "parent": "1. The System Design Process",
+    "file": "1-the-system-design-process-phase-1-requirements-gathering.ogg"
+  },
+  {
+    "title": "Phase 2: Capacity Estimation (Back-of-Envelope)",
+    "parent": "1. The System Design Process",
+    "file": "1-the-system-design-process-phase-2-capacity-estimation-back-of-envelope.ogg"
+  },
+  {
+    "title": "Phase 3: High-Level Design",
+    "parent": "1. The System Design Process",
+    "file": "1-the-system-design-process-phase-3-high-level-design.ogg"
+  },
+  {
+    "title": "Phase 4: Deep Dives",
+    "parent": "1. The System Design Process",
+    "file": "1-the-system-design-process-phase-4-deep-dives.ogg"
+  },
+  {
+    "title": "Phase 5: Trade-off Discussion",
+    "parent": "1. The System Design Process",
+    "file": "1-the-system-design-process-phase-5-trade-off-discussion.ogg"
+  },
+  {
+    "title": "Requirements",
+    "parent": "2. Design: URL Shortener",
+    "file": "2-design-url-shortener-requirements.ogg"
+  },
+  {
+    "title": "Encoding Strategy",
+    "parent": "2. Design: URL Shortener",
+    "file": "2-design-url-shortener-encoding-strategy.ogg"
+  },
+  {
+    "title": "Database Choice",
+    "parent": "2. Design: URL Shortener",
+    "file": "2-design-url-shortener-database-choice.ogg"
+  },
+  {
+    "title": "Caching",
+    "parent": "2. Design: URL Shortener",
+    "file": "2-design-url-shortener-caching.ogg"
+  },
+  {
+    "title": "Scaling Considerations",
+    "parent": "2. Design: URL Shortener",
+    "file": "2-design-url-shortener-scaling-considerations.ogg"
+  },
+  {
+    "title": "Requirements",
+    "parent": "3. Design: Chat Application",
+    "file": "3-design-chat-application-requirements.ogg"
+  },
+  {
+    "title": "Connection Management \u2014 WebSockets",
+    "parent": "3. Design: Chat Application",
+    "file": "3-design-chat-application-connection-management-websockets.ogg"
+  },
+  {
+    "title": "Message Storage",
+    "parent": "3. Design: Chat Application",
+    "file": "3-design-chat-application-message-storage.ogg"
+  },
+  {
+    "title": "Presence Service",
+    "parent": "3. Design: Chat Application",
+    "file": "3-design-chat-application-presence-service.ogg"
+  },
+  {
+    "title": "Fan-Out for Group Messages",
+    "parent": "3. Design: Chat Application",
+    "file": "3-design-chat-application-fan-out-for-group-messages.ogg"
+  },
+  {
+    "title": "Scaling to Millions",
+    "parent": "3. Design: Chat Application",
+    "file": "3-design-chat-application-scaling-to-millions.ogg"
+  },
+  {
+    "title": "4. Design: E-Commerce Order System",
+    "parent": null,
+    "file": "4-design-e-commerce-order-system.ogg"
+  },
+  {
+    "title": "Requirements",
+    "parent": "4. Design: E-Commerce Order System",
+    "file": "4-design-e-commerce-order-system-requirements.ogg"
+  },
+  {
+    "title": "Order Flow \u2014 The Saga Pattern",
+    "parent": "4. Design: E-Commerce Order System",
+    "file": "4-design-e-commerce-order-system-order-flow-the-saga-pattern.ogg"
+  },
+  {
+    "title": "CQRS \u2014 Separate Read and Write Models (Part 4)",
+    "parent": "4. Design: E-Commerce Order System",
+    "file": "4-design-e-commerce-order-system-cqrs-separate-read-and-write-models-part-4.ogg"
+  },
+  {
+    "title": "Patterns Referenced",
+    "parent": "4. Design: E-Commerce Order System",
+    "file": "4-design-e-commerce-order-system-patterns-referenced.ogg"
+  },
+  {
+    "title": "5. Common Patterns Cheat Sheet",
+    "parent": null,
+    "file": "5-common-patterns-cheat-sheet.ogg"
+  },
+  {
+    "title": "The Framework (45\u201360 minutes)",
+    "parent": "6. How to Approach System Design Interviews",
+    "file": "6-how-to-approach-system-design-interviews-the-framework-4560-minutes.ogg"
+  },
+  {
+    "title": "Communication Tips",
+    "parent": "6. How to Approach System Design Interviews",
+    "file": "6-how-to-approach-system-design-interviews-communication-tips.ogg"
+  },
+  {
+    "title": "Common Mistakes to Avoid",
+    "parent": "6. How to Approach System Design Interviews",
+    "file": "6-how-to-approach-system-design-interviews-common-mistakes-to-avoid.ogg"
+  },
+  {
+    "title": "7. Architecture Documentation",
+    "parent": null,
+    "file": "7-architecture-documentation.ogg"
+  },
+  {
+    "title": "Architecture Decision Records (ADRs)",
+    "parent": "7. Architecture Documentation",
+    "file": "7-architecture-documentation-architecture-decision-records-adrs.ogg"
+  },
+  {
+    "title": "Context",
+    "parent": null,
+    "file": "context.ogg"
+  },
+  {
+    "title": "Decision",
+    "parent": null,
+    "file": "decision.ogg"
+  },
+  {
+    "title": "Consequences",
+    "parent": null,
+    "file": "consequences.ogg"
+  },
+  {
+    "title": "C4 Model",
+    "parent": "Consequences",
+    "file": "consequences-c4-model.ogg"
+  },
+  {
+    "title": "Estimation Skills",
+    "parent": "Consequences",
+    "file": "consequences-estimation-skills.ogg"
+  },
+  {
+    "title": "8. Key Takeaways",
+    "parent": null,
+    "file": "8-key-takeaways.ogg"
+  }
+]
