@@ -2,24 +2,50 @@
 {{ $audioBase := printf "audio/%s" $part }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const base = {{ printf "%s/" $audioBase | relURL }};
+  var base = {{ printf "%s/" $audioBase | relURL }};
   fetch(base + 'manifest.json')
     .then(function(r) { return r.json(); })
     .then(function(sections) {
+      // Build a map of parent h2 -> child h3 headings in DOM order
+      var headings = document.querySelectorAll('h2, h3');
+      var currentParent = null;
+      // Track which headings have been matched to avoid duplicates
+      var matched = new Set();
+
       sections.forEach(function(s) {
-        var headings = document.querySelectorAll('h2, h3');
-        for (var i = 0; i < headings.length; i++) {
-          var h = headings[i];
-          if (h.textContent.trim() === s.title) {
-            var btn = document.createElement('button');
-            btn.className = 'inline-audio-btn';
-            btn.innerHTML = '🔊';
-            btn.title = 'Listen to this section';
-            btn.setAttribute('data-src', base + s.file);
-            btn.onclick = function() { toggleInlineAudio(this); };
-            h.appendChild(btn);
-            break;
+        var targetHeading = null;
+
+        if (s.parent) {
+          // Find the h3 with this title that's under the correct h2 parent
+          var inParent = false;
+          for (var i = 0; i < headings.length; i++) {
+            var h = headings[i];
+            if (h.tagName === 'H2') {
+              inParent = (h.textContent.trim() === s.parent);
+            } else if (h.tagName === 'H3' && inParent && h.textContent.trim() === s.title && !matched.has(h)) {
+              targetHeading = h;
+              break;
+            }
           }
+        } else {
+          // Top-level h2
+          for (var j = 0; j < headings.length; j++) {
+            if (headings[j].textContent.trim() === s.title && !matched.has(headings[j])) {
+              targetHeading = headings[j];
+              break;
+            }
+          }
+        }
+
+        if (targetHeading) {
+          matched.add(targetHeading);
+          var btn = document.createElement('button');
+          btn.className = 'inline-audio-btn';
+          btn.innerHTML = '🔊';
+          btn.title = 'Listen to this section';
+          btn.setAttribute('data-src', base + s.file);
+          btn.onclick = function() { toggleInlineAudio(this); };
+          targetHeading.appendChild(btn);
         }
       });
     })
