@@ -157,9 +157,22 @@ function buildModelSelect(provider, currentModel) {
   if (!p || !p.models.length) {
     return '<input id="model-input" type="text" value="' + currentModel + '" placeholder="model-name" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;font-family:monospace;color:#333;">';
   }
-  return '<select id="model-select" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;background:#fff;color:#333;">'
+  var isCustomModel = p.models.indexOf(currentModel) === -1 && currentModel;
+  var html = '<select id="model-select" onchange="onModelChange()" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;background:#fff;color:#333;">'
     + p.models.map(function(m) { return '<option value="' + m + '"' + (currentModel===m?' selected':'') + '>' + m + '</option>'; }).join('')
-    + '</select>';
+    + '<option value="__other"' + (isCustomModel?' selected':'') + '>Other (enter model name)</option>'
+    + '</select>'
+    + '<input id="model-custom-input" type="text" value="' + (isCustomModel ? currentModel : '') + '" placeholder="e.g. deepseek/deepseek-v3" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;font-family:monospace;color:#333;margin-top:0.5rem;display:' + (isCustomModel?'block':'none') + ';">';
+  return html;
+}
+
+function onModelChange() {
+  var sel = document.getElementById("model-select");
+  var customInput = document.getElementById("model-custom-input");
+  if (sel && customInput) {
+    customInput.style.display = sel.value === "__other" ? "block" : "none";
+    if (sel.value === "__other") customInput.focus();
+  }
 }
 
 function onProviderChange() {
@@ -175,6 +188,11 @@ function saveKey() {
   var provider = document.getElementById("provider-select").value;
   var modelEl = document.getElementById("model-select") || document.getElementById("model-input");
   var model = modelEl ? modelEl.value.trim() : DEFAULT_MODEL;
+  // If "Other" is selected, use the custom text input
+  if (model === "__other") {
+    var customModelEl = document.getElementById("model-custom-input");
+    model = customModelEl ? customModelEl.value.trim() : DEFAULT_MODEL;
+  }
   if (key) localStorage.setItem("ai_api_key", key);
   localStorage.setItem("ai_provider", provider);
   localStorage.setItem("ai_model", model);
@@ -183,7 +201,6 @@ function saveKey() {
     if (customUrl) localStorage.setItem("ai_custom_url", customUrl);
   }
   document.getElementById("key-overlay").remove();
-  // Refresh the settings button text
   location.reload();
 }
 
