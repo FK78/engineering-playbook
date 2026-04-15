@@ -92,13 +92,13 @@ case_studies:
         description: "Write current state to a normalized PostgreSQL database for the dashboard (fast reads, familiar queries). Simultaneously write every change to an immutable audit log (DynamoDB with no delete permissions, or S3 with object lock). The dashboard reads from PostgreSQL; compliance queries the audit log. A reconciliation job periodically verifies the two are consistent."
         trade_off: "Simplest mental model — current state in one place, audit trail in another. Each store is optimized for its purpose. But dual-writes risk inconsistency if one write succeeds and the other fails (need transactional outbox or change data capture). The reconciliation job adds operational overhead. Two sources of truth is inherently fragile."
 interactive_cases:
-  - title: "CQRS Event Throughput Estimation"
+  - title: "Live Sports Betting Platform Throughput"
     type: "back-of-envelope"
-    difficulty: "⭐⭐"
-    brief: "Estimate how many events per second a CQRS system would need to handle for a food delivery app like Deliveroo operating in 10 cities. Walk through your assumptions step by step."
-    opening: "We're designing the event infrastructure for a food delivery platform launching in 10 cities. Before we pick between Kafka, SQS, or Kinesis, we need a rough estimate of event throughput. Can you walk me through a back-of-envelope calculation for how many events per second we'd need to handle at peak?"
-    answer_range: "500-5000 events/second depending on assumptions"
-    key_assumptions: "orders per city per hour, events per order lifecycle (created, accepted, picked up, delivered, rated = ~5-8 events), peak multiplier"
+    difficulty: "⭐⭐⭐"
+    brief: "Estimate the event throughput for a live sports betting platform during a Premier League Saturday (10 simultaneous matches). Consider bets placed, odds updates, and settlement events."
+    opening: "We're building the event backbone for a live sports betting platform. This Saturday there are 10 Premier League matches kicking off at 3pm. We need to size our Kafka cluster. Can you estimate how many events per second we'll need to handle at peak?"
+    answer_range: "5,000-50,000 events/second depending on assumptions about active users, bet frequency, odds update frequency, and market count per match"
+    key_assumptions: "concurrent users during peak (50K-500K), bets per user per match, number of markets per match (50-200), odds update frequency per market, settlement events per match, peak concentration during goals/red cards"
 ---
 
 {{< audio-player part="part3" >}}
