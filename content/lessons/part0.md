@@ -2,7 +2,7 @@
 title: "Part 0: Prerequisites"
 subtitle: "Foundational concepts you should know before diving into architecture"
 linkTitle: "Part 0: Prerequisites"
-weight: 0
+weight: -1
 type: "docs"
 quiz:
   - q: "A client sends a GET request to /api/users and receives a 200 status code. What does this mean?"
