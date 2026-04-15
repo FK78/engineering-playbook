@@ -1,0 +1,217 @@
+[
+  {
+    "title": "CAP Theorem",
+    "parent": null,
+    "file": "cap-theorem.ogg"
+  },
+  {
+    "title": "CP vs AP Systems",
+    "parent": "CAP Theorem",
+    "file": "cap-theorem-cp-vs-ap-systems.ogg"
+  },
+  {
+    "title": "Consistency Models",
+    "parent": null,
+    "file": "consistency-models.ogg"
+  },
+  {
+    "title": "Strong Consistency",
+    "parent": "Consistency Models",
+    "file": "consistency-models-strong-consistency.ogg"
+  },
+  {
+    "title": "Eventual Consistency",
+    "parent": "Consistency Models",
+    "file": "consistency-models-eventual-consistency.ogg"
+  },
+  {
+    "title": "Causal Consistency",
+    "parent": "Consistency Models",
+    "file": "consistency-models-causal-consistency.ogg"
+  },
+  {
+    "title": "Practical Consistency Patterns",
+    "parent": "Consistency Models",
+    "file": "consistency-models-practical-consistency-patterns.ogg"
+  },
+  {
+    "title": "Consensus",
+    "parent": null,
+    "file": "consensus.ogg"
+  },
+  {
+    "title": "Raft",
+    "parent": "Consensus",
+    "file": "consensus-raft.ogg"
+  },
+  {
+    "title": "Paxos",
+    "parent": "Consensus",
+    "file": "consensus-paxos.ogg"
+  },
+  {
+    "title": "Microservices Trade-offs",
+    "parent": null,
+    "file": "microservices-trade-offs.ogg"
+  },
+  {
+    "title": "When Monolith vs Microservices",
+    "parent": "Microservices Trade-offs",
+    "file": "microservices-trade-offs-when-monolith-vs-microservices.ogg"
+  },
+  {
+    "title": "The Fallacies of Distributed Computing",
+    "parent": "Microservices Trade-offs",
+    "file": "microservices-trade-offs-the-fallacies-of-distributed-computing.ogg"
+  },
+  {
+    "title": "Service Discovery & Load Balancing",
+    "parent": null,
+    "file": "service-discovery-load-balancing.ogg"
+  },
+  {
+    "title": "Client-Side vs Server-Side Discovery",
+    "parent": "Service Discovery & Load Balancing",
+    "file": "service-discovery-load-balancing-client-side-vs-server-side-discovery.ogg"
+  },
+  {
+    "title": "Health Checks",
+    "parent": "Service Discovery & Load Balancing",
+    "file": "service-discovery-load-balancing-health-checks.ogg"
+  },
+  {
+    "title": "Circuit Breaker Pattern",
+    "parent": null,
+    "file": "circuit-breaker-pattern.ogg"
+  },
+  {
+    "title": "Observability",
+    "parent": null,
+    "file": "observability.ogg"
+  },
+  {
+    "title": "Distributed Tracing with Correlation IDs",
+    "parent": "Observability",
+    "file": "observability-distributed-tracing-with-correlation-ids.ogg"
+  },
+  {
+    "title": "Observability Tools in Practice",
+    "parent": "Observability",
+    "file": "observability-observability-tools-in-practice.ogg"
+  },
+  {
+    "title": "Setting Up a Practical Observability Stack",
+    "parent": "Observability",
+    "file": "observability-setting-up-a-practical-observability-stack.ogg"
+  },
+  {
+    "title": "Metrics: What to Measure",
+    "parent": "Observability",
+    "file": "observability-metrics-what-to-measure.ogg"
+  },
+  {
+    "title": "Alerting Strategy",
+    "parent": "Observability",
+    "file": "observability-alerting-strategy.ogg"
+  },
+  {
+    "title": "Dashboards",
+    "parent": "Observability",
+    "file": "observability-dashboards.ogg"
+  },
+  {
+    "title": "SOA vs Microservices",
+    "parent": null,
+    "file": "soa-vs-microservices.ogg"
+  },
+  {
+    "title": "SOA: The Original Service Architecture",
+    "parent": "SOA vs Microservices",
+    "file": "soa-vs-microservices-soa-the-original-service-architecture.ogg"
+  },
+  {
+    "title": "Microservices: The Evolution",
+    "parent": "SOA vs Microservices",
+    "file": "soa-vs-microservices-microservices-the-evolution.ogg"
+  },
+  {
+    "title": "Key Differences",
+    "parent": "SOA vs Microservices",
+    "file": "soa-vs-microservices-key-differences.ogg"
+  },
+  {
+    "title": "When You'd Still See SOA",
+    "parent": "SOA vs Microservices",
+    "file": "soa-vs-microservices-when-youd-still-see-soa.ogg"
+  },
+  {
+    "title": "The Actor Model",
+    "parent": null,
+    "file": "the-actor-model.ogg"
+  },
+  {
+    "title": "What Is an Actor?",
+    "parent": "The Actor Model",
+    "file": "the-actor-model-what-is-an-actor.ogg"
+  },
+  {
+    "title": "How It Differs from Traditional Threading",
+    "parent": "The Actor Model",
+    "file": "the-actor-model-how-it-differs-from-traditional-threading.ogg"
+  },
+  {
+    "title": "Where You See It",
+    "parent": "The Actor Model",
+    "file": "the-actor-model-where-you-see-it.ogg"
+  },
+  {
+    "title": "Conceptual Example",
+    "parent": "The Actor Model",
+    "file": "the-actor-model-conceptual-example.ogg"
+  },
+  {
+    "title": "When to Use",
+    "parent": "The Actor Model",
+    "file": "the-actor-model-when-to-use.ogg"
+  },
+  {
+    "title": "When Not to Use",
+    "parent": "The Actor Model",
+    "file": "the-actor-model-when-not-to-use.ogg"
+  },
+  {
+    "title": "Resilience Patterns",
+    "parent": null,
+    "file": "resilience-patterns.ogg"
+  },
+  {
+    "title": "Backpressure",
+    "parent": "Resilience Patterns",
+    "file": "resilience-patterns-backpressure.ogg"
+  },
+  {
+    "title": "Throttling / Rate Limiting",
+    "parent": "Resilience Patterns",
+    "file": "resilience-patterns-throttling-rate-limiting.ogg"
+  },
+  {
+    "title": "Graceful Degradation",
+    "parent": "Resilience Patterns",
+    "file": "resilience-patterns-graceful-degradation.ogg"
+  },
+  {
+    "title": "Load Shedding",
+    "parent": "Resilience Patterns",
+    "file": "resilience-patterns-load-shedding.ogg"
+  },
+  {
+    "title": "Comparison",
+    "parent": "Resilience Patterns",
+    "file": "resilience-patterns-comparison.ogg"
+  },
+  {
+    "title": "Key Takeaways",
+    "parent": null,
+    "file": "key-takeaways.ogg"
+  }
+]
