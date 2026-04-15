@@ -1666,6 +1666,121 @@ This applies to every step in the saga:
   <strong>The real question:</strong> can someone new to the team understand the flow? With 3 steps, choreography is fine. With 8 steps and branching failure paths, orchestration is much easier to reason about. Start with orchestration for complex flows.
 </div>
 
+## Sizing an Event-Driven System
+
+When designing event-driven systems, you need to estimate throughput to choose the right infrastructure. This is a back-of-envelope estimation skill that comes up in system design interviews and real capacity planning.
+
+### The Framework
+
+Always break the problem into components, estimate each one, then multiply. State your assumptions explicitly so others can challenge them.
+
+```text
+1. Start with the business metric (orders per day, users, requests)
+2. Break it into time units (per second is what infrastructure cares about)
+3. Count events per business action (not just the action itself)
+4. Apply a peak multiplier (real traffic is spiky, not uniform)
+5. Give a range, not a single number
+```
+
+### Worked Example: Food Delivery Platform in 10 Cities
+
+**Step 1: Orders per city per day**
+
+Don't just guess. Anchor to something real. A mid-size city with a food delivery platform might do 5,000 to 20,000 orders per day. Start with 10,000 as a baseline.
+
+```text
+10 cities x 10,000 orders/day = 100,000 orders/day
+```
+
+**Step 2: Convert to per-second**
+
+```text
+100,000 orders / 86,400 seconds = ~1.2 orders/second (average)
+```
+
+But orders aren't spread evenly. Most happen during lunch (12:00-13:00) and dinner (18:00-20:00). That's roughly 4 peak hours out of 24.
+
+```text
+Peak concentration: ~60-70% of orders in 4 hours
+70,000 orders in 14,400 seconds = ~5 orders/second during peak
+```
+
+**Step 3: Events per order**
+
+This is where people undercount. An order isn't one event. Think through the full lifecycle:
+
+| Event | When |
+|---|---|
+| OrderCreated | Customer places order |
+| PaymentProcessed | Payment charged |
+| OrderAccepted | Restaurant confirms |
+| PreparationStarted | Kitchen begins cooking |
+| OrderReady | Food is ready for pickup |
+| DriverAssigned | Driver matched to order |
+| DriverPickedUp | Driver collected the food |
+| OrderDelivered | Customer received the food |
+| OrderRated | Customer leaves a review |
+
+That's 9 events per order. Some orders also generate: PaymentFailed, OrderCancelled, RefundProcessed, DriverReassigned. Call it 8-12 events per order on average.
+
+```text
+5 orders/second x 10 events/order = 50 events/second at peak
+```
+
+**Step 4: Add downstream consumers**
+
+Each event might trigger additional work: updating read models, sending notifications, updating analytics, adjusting driver availability. If 3 consumers each process every event:
+
+```text
+50 events/second x 3 consumers = 150 messages/second total throughput
+```
+
+**Step 5: Apply a safety margin**
+
+Real systems need headroom for spikes (a promotion, bad weather causing surge orders, a new city launch). Use 2-3x.
+
+```text
+150 x 3 = 450 messages/second capacity needed
+```
+
+**Step 6: Give a range**
+
+Your assumptions could be off. State the range:
+
+```text
+Conservative (5K orders/city): ~200 messages/second
+Baseline (10K orders/city):    ~450 messages/second
+Aggressive (20K orders/city):  ~900 messages/second
+```
+
+### Common Mistakes in Estimation
+
+| Mistake | Why it matters |
+|---|---|
+| Counting only the primary action | An "order" generates 8-12 events, not 1 |
+| Using daily averages for capacity | Peak traffic can be 5-10x the average |
+| Not anchoring to real numbers | "1,000 orders per hour" sounds reasonable but is it? Check against known platforms |
+| Single number instead of a range | Assumptions are uncertain. Always give low/mid/high |
+| Ignoring downstream fan-out | 50 events/second becomes 150+ when multiple consumers process each one |
+| Not questioning the inputs | If someone says "10 cities", ask: what size? Launch stage or mature? |
+
+### Sensitivity Analysis
+
+The most impactful assumptions to test:
+
+```text
+If orders/city doubles:     throughput doubles
+If events/order goes 8->12: throughput increases 50%
+If peak factor goes 3x->5x: throughput increases 67%
+If consumers go 3->5:       throughput increases 67%
+```
+
+The biggest lever is usually orders per city and peak concentration. Get those wrong and your estimate is off by an order of magnitude.
+
+<div class="callout tip">
+  <strong>In an interview or planning session:</strong> propose your own assumptions, state them clearly, then ask "does that seem reasonable?" Don't wait to be given numbers. Show that you can reason about the business context: meal times create peaks, new cities have fewer orders, promotions cause spikes.
+</div>
+
 ## Putting It All Together
 
 These patterns rarely exist in isolation. Here's how they combine in a real food delivery app, walking through what happens when a customer places an order:
