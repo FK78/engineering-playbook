@@ -1087,6 +1087,158 @@ groups:
 
 ---
 
+## SOA vs Microservices
+
+Before microservices became the default conversation, there was **SOA (Service-Oriented Architecture)**. Understanding where SOA came from helps you understand why microservices exist, and when SOA patterns are still the right choice.
+
+### SOA: The Original Service Architecture
+
+SOA emerged in the early 2000s as a way to break large enterprise systems into services that could be reused across the organization. The defining feature is the **Enterprise Service Bus (ESB)**, a centralized middleware layer that handles routing, message transformation, protocol translation, and orchestration between services.
+
+Services in SOA tend to be **large and coarse-grained**. A single "Customer Service" might handle registration, profile management, authentication, and preferences. The ESB sits in the middle, directing traffic and enforcing standards.
+
+```text
+Service A ──┐
+Service B ──┤── Enterprise Service Bus (ESB) ──┤── Service D
+Service C ──┘                                   └── Service E
+```
+
+### Microservices: The Evolution
+
+Microservices evolved from SOA, keeping the idea of service boundaries but removing the centralized bus. Each service is **small, independently deployable, and owns its own data**. Communication happens directly between services via HTTP, gRPC, or events, with no central orchestrator.
+
+```text
+Service A ──→ Service B (HTTP)
+Service A ──→ Service C (gRPC)
+Service B ──→ Service D (events via message queue)
+```
+
+### Key Differences
+
+| | SOA | Microservices |
+|---|---|---|
+| Service size | Large, coarse-grained | Small, fine-grained |
+| Communication | ESB (centralized) | Direct HTTP/gRPC/events (decentralized) |
+| Data | Often shared database | Each service owns its data |
+| Governance | Centralized standards | Decentralized, team autonomy |
+| Deployment | Often deployed together | Independent deployment |
+| Best era | 2000s enterprise | 2010s+ cloud-native |
+
+### When You'd Still See SOA
+
+SOA is not dead. You will encounter it in:
+
+- **Large enterprises with legacy systems.** Banks, insurers, and government agencies invested heavily in ESB infrastructure (IBM WebSphere, MuleSoft, Oracle Service Bus). Ripping that out is expensive and risky.
+- **Regulated industries.** Centralized governance through an ESB makes it easier to enforce compliance, audit trails, and data standards across all services.
+- **Organizations that need shared data contracts.** When dozens of teams must agree on canonical data formats, a centralized bus that enforces schemas can reduce integration chaos.
+
+<div class="callout">
+<strong>Microservices are not always better than SOA.</strong> If your organization needs centralized governance and shared data standards, SOA patterns may be more appropriate.
+</div>
+
+---
+
+## The Actor Model
+
+The **actor model** is a concurrency model where the fundamental unit of computation is an **actor**: an independent entity that communicates with other actors only via messages. No shared state, no locks.
+
+### What Is an Actor?
+
+Each actor has three things:
+
+1. **A mailbox** (message queue): incoming messages are queued and processed one at a time
+2. **State** (private): only the actor can read or modify its own state
+3. **Behavior** (message handler): defines how the actor processes each message
+
+When an actor receives a message, it can: update its own state, send messages to other actors, or create new actors. It never directly accesses another actor's state.
+
+```text
+Actor A ──message──→ [Mailbox] → Actor B (processes one message at a time)
+                                   ├── updates own state
+                                   ├── sends message to Actor C
+                                   └── creates new Actor D
+```
+
+### How It Differs from Traditional Threading
+
+| | Traditional Threads | Actor Model |
+|---|---|---|
+| State | Shared memory between threads | Private to each actor |
+| Synchronization | Locks, mutexes, semaphores | No locks needed |
+| Communication | Read/write shared variables | Message passing only |
+| Failure mode | Deadlocks, race conditions | Message delivery failures |
+| Mental model | "Protect shared data" | "Send messages, don't share" |
+
+### Where You See It
+
+- **Erlang/Elixir**: the language was built around actors. WhatsApp handled 2 million connections per server using Erlang actors. Discord uses Elixir for real-time messaging.
+- **Akka (JVM)**: actor framework for Java/Scala. Used in high-throughput financial systems and IoT platforms.
+- **Microsoft Orleans (.NET)**: "virtual actors" (grains) for cloud-native .NET applications. Used in Halo's game services.
+
+### Conceptual Example
+
+<span class="label label-ts">TypeScript</span>, a simplified actor that processes messages from a mailbox:
+
+```typescript
+type Message = { type: string; payload: unknown };
+type Behavior = (state: unknown, message: Message) => unknown;
+
+class Actor {
+  private mailbox: Message[] = [];
+  private processing = false;
+
+  constructor(
+    private state: unknown,
+    private behavior: Behavior,
+  ) {}
+
+  send(message: Message) {
+    this.mailbox.push(message);
+    this.processNext();
+  }
+
+  private processNext() {
+    if (this.processing || this.mailbox.length === 0) return;
+    this.processing = true;
+    const message = this.mailbox.shift()!;
+    this.state = this.behavior(this.state, message);
+    this.processing = false;
+    this.processNext();
+  }
+}
+
+// Usage: a chat session actor
+const chatActor = new Actor({ messages: [] as string[] }, (state: any, msg: Message) => {
+  if (msg.type === "NEW_MESSAGE") {
+    return { messages: [...state.messages, msg.payload] };
+  }
+  return state;
+});
+
+chatActor.send({ type: "NEW_MESSAGE", payload: "Hello!" });
+chatActor.send({ type: "NEW_MESSAGE", payload: "How are you?" });
+```
+
+Each actor processes one message at a time. No locks, no race conditions. If you need concurrency, you create more actors, not more threads.
+
+### When to Use
+
+- **High concurrency**: millions of simultaneous connections or sessions
+- **Real-time systems**: chat, gaming, live collaboration
+- **IoT**: each device or sensor as an actor
+- **Systems where isolation matters**: one actor crashing should not bring down others
+
+### When Not to Use
+
+- **Simple CRUD applications**: the overhead of actors is not justified when a straightforward request/response model works fine
+- **When you don't have concurrency problems**: if your system handles requests sequentially or at low volume, actors add complexity without benefit
+
+<div class="callout tip">
+<strong>Real-world scale:</strong> WhatsApp handled 2 million connections per server using Erlang actors. Each chat session was an actor with its own state and mailbox. No shared memory, no locks, no race conditions.
+</div>
+
+---
+
 ## Key Takeaways
 
 1. **CAP theorem** — during a network partition, choose consistency (reject requests) or availability (serve stale data). Partition tolerance is mandatory

@@ -1,6 +1,6 @@
 ---
 title: "Part 6: Cloud & Infrastructure Patterns"
-subtitle: "Load Balancing, Scaling, CDNs, Containers, IaC, CI/CD & Disaster Recovery"
+subtitle: "Load Balancing, Scaling, CDNs, Containers, IaC, CI/CD, Serverless & Disaster Recovery"
 linkTitle: "Part 6: Cloud & Infrastructure"
 weight: 6
 type: "docs"
@@ -711,15 +711,174 @@ health.get("/health", async (req, res) => {
 // If a region returns 503, traffic is routed to healthy regions.
 ```
 
+## Serverless Architecture
+
+### What Is Serverless?
+
+With serverless, you write functions and the cloud provider manages servers, scaling, and availability for you. You pay per invocation, not per hour. Zero traffic means zero cost.
+
+The main serverless compute services are **AWS Lambda**, **Google Cloud Functions**, and **Azure Functions**.
+
+<div class="callout info">
+  <strong>Not actually "no servers."</strong> Servers still exist. You just don't provision, patch, or manage them. The cloud provider handles all of that.
+</div>
+
+### How It Works
+
+Serverless functions are triggered by events:
+
+- **HTTP request** via API Gateway
+- **Queue message** from SQS
+- **Schedule** (cron) via EventBridge
+- **File upload** to S3
+- **Database change** via DynamoDB Streams
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+// AWS Lambda handler: API endpoint via API Gateway
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  const userId = event.pathParameters?.id;
+
+  // Your business logic here
+  const user = { id: userId, name: "Alice", email: "alice@example.com" };
+
+  return {
+    statusCode: 200,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(user),
+  };
+};
+```
+
+<span class="label label-py">Python</span>
+
+```python
+# AWS Lambda handler: processing an SQS message
+import json
+
+def handler(event, context):
+    for record in event["Records"]:
+        body = json.loads(record["body"])
+        order_id = body["order_id"]
+
+        # Process the order
+        print(f"Processing order {order_id}")
+        # ... business logic here
+
+    return {"statusCode": 200, "body": "Processed"}
+```
+
+<div class="callout tip">
+  <strong>API Gateway + Lambda replaces Express/FastAPI for simple APIs.</strong> Instead of running a web server 24/7, each route becomes a Lambda function triggered by API Gateway. No server to manage, no idle compute cost. For simple CRUD APIs, this is often the fastest path to production.
+</div>
+
+### Serverless Patterns
+
+**API backend:** API Gateway + Lambda + DynamoDB
+
+```text
+Client → API Gateway → Lambda → DynamoDB
+                          ↓
+                     Response back
+```
+
+**Event processing:** SQS/SNS + Lambda
+
+```text
+Producer → SQS Queue → Lambda (consumer) → Database / S3 / etc.
+```
+
+**Scheduled jobs:** EventBridge + Lambda
+
+```text
+EventBridge (cron: "every 5 minutes") → Lambda → cleanup / report / sync
+```
+
+**File processing:** S3 trigger + Lambda
+
+```text
+User uploads file → S3 bucket → Lambda → thumbnail / parse / transform → S3 output
+```
+
+<div class="callout">
+  <strong>Simple API backend architecture:</strong>
+</div>
+
+```text
+              ┌──────────────┐
+              │    Client     │
+              └──────┬───────┘
+                     │
+              ┌──────▼───────┐
+              │ API Gateway   │
+              └──────┬───────┘
+                     │
+         ┌───────────┼───────────┐
+         ▼           ▼           ▼
+   ┌──────────┐ ┌──────────┐ ┌──────────┐
+   │ Lambda   │ │ Lambda   │ │ Lambda   │
+   │ GET /usr │ │ POST /usr│ │ GET /ord │
+   └────┬─────┘ └────┬─────┘ └────┬─────┘
+        │             │             │
+        └─────────────┼─────────────┘
+                      ▼
+              ┌──────────────┐
+              │  DynamoDB     │
+              └──────────────┘
+```
+
+### Cold Starts
+
+A cold start happens when a Lambda function is invoked after an idle period. The cloud provider must initialize the runtime environment before your code runs. This adds latency, typically 100ms to several seconds depending on the runtime and package size.
+
+**Why it happens:** the execution environment is not kept alive indefinitely. After a period of inactivity, it is reclaimed. The next invocation must spin up a fresh environment.
+
+**Mitigation strategies:**
+
+- **Provisioned concurrency:** pre-warm a set number of execution environments (costs money, but eliminates cold starts)
+- **Keep functions warm:** schedule a ping every few minutes to prevent the environment from being reclaimed
+- **Use lighter runtimes:** Node.js and Python cold starts are typically 100-300ms. Java and .NET can take 1-3 seconds or more.
+
+### When to Use Serverless
+
+| Use Case | Serverless? | Why |
+|---|---|---|
+| Sporadic/unpredictable traffic | Yes | Pay nothing when idle |
+| Simple API endpoints | Yes | No infrastructure to manage |
+| Event processing (S3, SQS) | Yes | Natural fit for triggers |
+| Long-running processes (>15 min) | No | Lambda has execution time limits |
+| WebSocket/persistent connections | Partially | Possible but awkward |
+| High-throughput, steady traffic | Maybe not | Containers may be cheaper at scale |
+
+### Serverless vs Containers
+
+| | Serverless (Lambda) | Containers (ECS/K8s) |
+|---|---|---|
+| Scaling | Automatic, per-request | Automatic, per-pod/task |
+| Cold start | Yes (100ms to seconds) | No (always running) |
+| Cost at low traffic | Very cheap | Minimum cost (always running) |
+| Cost at high traffic | Can be expensive | More predictable |
+| Max execution time | 15 minutes (Lambda) | Unlimited |
+| Control | Limited (runtime, memory) | Full (OS, networking) |
+
+<div class="callout">
+  <strong>Serverless is not a replacement for containers.</strong> Many teams use both: Lambda for event-driven glue (S3 triggers, SQS processors, cron jobs) and containers for core API services that need persistent connections or long-running processes.
+</div>
+
+
 ## Key Takeaways
 
-1. **Load balancers** distribute traffic — use L7 for HTTP-aware routing, L4 for raw TCP performance
+1. **Load balancers** distribute traffic. Use L7 for HTTP-aware routing, L4 for raw TCP performance
 2. **Scale horizontally** for stateless app servers, vertically for databases (until you add read replicas or shard)
-3. **CDNs** reduce latency by caching content at the edge — use versioned URLs for cache busting
-4. **Containers** solve "works on my machine" — Kubernetes solves orchestration at scale, but isn't always necessary
-5. **Infrastructure as Code** makes infrastructure reproducible, auditable, and reviewable — treat servers as cattle, not pets
-6. **CI/CD pipelines** automate the path from commit to production — blue-green for instant rollback, canary for gradual rollout
-7. **Multi-region** eliminates single-region failure — choose active-active or active-passive based on your RPO/RTO requirements and budget
+3. **CDNs** reduce latency by caching content at the edge. Use versioned URLs for cache busting
+4. **Containers** solve "works on my machine." Kubernetes solves orchestration at scale, but isn't always necessary
+5. **Infrastructure as Code** makes infrastructure reproducible, auditable, and reviewable. Treat servers as cattle, not pets
+6. **CI/CD pipelines** automate the path from commit to production. Blue-green for instant rollback, canary for gradual rollout
+7. **Multi-region** eliminates single-region failure. Choose active-active or active-passive based on your RPO/RTO requirements and budget
+8. **Serverless** lets you run code without managing servers. Ideal for event-driven workloads, sporadic traffic, and simple APIs. Use containers when you need persistent connections, long-running processes, or predictable high-throughput costs
 
 ## Check Your Understanding
 

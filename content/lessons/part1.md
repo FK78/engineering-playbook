@@ -624,6 +624,384 @@ test("getOrder returns order", async () => {
 });
 ```
 
+
+## SOLID Principles
+
+Five design principles that guide you toward maintainable, flexible object-oriented code. Each one addresses a specific kind of pain you'll hit as a codebase grows.
+
+### 1. Single Responsibility Principle (SRP)
+
+A class should have **one reason to change**. If a class handles multiple concerns, a change to one concern risks breaking the others.
+
+This connects directly to the [cohesion section above](#cohesion): SRP is cohesion applied at the class level.
+
+<span class="bad">Violating SRP:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+class OrderService {
+  validate(order: Order): boolean {
+    return order.items.length > 0 && order.total > 0;
+  }
+
+  async save(order: Order): Promise<void> {
+    await db.query("INSERT INTO orders ...", [order]);
+  }
+
+  async sendConfirmation(order: Order): Promise<void> {
+    await emailClient.send(order.customerEmail, "Order confirmed");
+  }
+}
+```
+
+Three reasons to change: validation rules, persistence logic, email format. A change to the email provider could break order saving.
+
+<span class="good">Applying SRP:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+class OrderValidator {
+  validate(order: Order): boolean {
+    return order.items.length > 0 && order.total > 0;
+  }
+}
+
+class OrderRepository {
+  async save(order: Order): Promise<void> {
+    await db.query("INSERT INTO orders ...", [order]);
+  }
+}
+
+class OrderNotifier {
+  async sendConfirmation(order: Order): Promise<void> {
+    await emailClient.send(order.customerEmail, "Order confirmed");
+  }
+}
+```
+
+Each class has one reason to change. They can be tested, modified, and deployed independently.
+
+### 2. Open/Closed Principle (OCP)
+
+Classes should be **open for extension** but **closed for modification**. Add new behavior without changing existing, tested code.
+
+<span class="bad">Violating OCP:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+class DiscountCalculator {
+  calculate(type: string, total: number): number {
+    if (type === "seasonal") return total * 0.1;
+    if (type === "loyalty") return total * 0.15;
+    // Adding a new discount means modifying this method
+    return 0;
+  }
+}
+```
+
+Every new discount type requires editing this method, risking regressions in existing discount logic.
+
+<span class="good">Applying OCP with the strategy pattern:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+interface DiscountStrategy {
+  calculate(total: number): number;
+}
+
+class SeasonalDiscount implements DiscountStrategy {
+  calculate(total: number): number { return total * 0.1; }
+}
+
+class LoyaltyDiscount implements DiscountStrategy {
+  calculate(total: number): number { return total * 0.15; }
+}
+
+// New discount: just add a new class. No existing code changes.
+class ReferralDiscount implements DiscountStrategy {
+  calculate(total: number): number { return total * 0.2; }
+}
+
+class DiscountCalculator {
+  constructor(private strategy: DiscountStrategy) {}
+  calculate(total: number): number {
+    return this.strategy.calculate(total);
+  }
+}
+```
+
+### 3. Liskov Substitution Principle (LSP)
+
+Subtypes must be **substitutable** for their base types without breaking correctness. If code works with a base class, it must also work with any subclass.
+
+<span class="bad">Classic LSP violation:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+class Rectangle {
+  constructor(protected width: number, protected height: number) {}
+
+  setWidth(w: number) { this.width = w; }
+  setHeight(h: number) { this.height = h; }
+  area(): number { return this.width * this.height; }
+}
+
+class Square extends Rectangle {
+  setWidth(w: number) { this.width = w; this.height = w; }
+  setHeight(h: number) { this.width = h; this.height = h; }
+}
+
+// This breaks:
+function expectArea(rect: Rectangle) {
+  rect.setWidth(5);
+  rect.setHeight(4);
+  console.log(rect.area()); // Rectangle: 20, Square: 16!
+}
+```
+
+Square changes the behavior of setWidth/setHeight in a way that breaks expectations of Rectangle users.
+
+<span class="good">Fix: use separate types or a read-only interface:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+interface Shape {
+  area(): number;
+}
+
+class Rectangle implements Shape {
+  constructor(private width: number, private height: number) {}
+  area(): number { return this.width * this.height; }
+}
+
+class Square implements Shape {
+  constructor(private side: number) {}
+  area(): number { return this.side * this.side; }
+}
+```
+
+No inheritance, no broken substitution. Both satisfy the Shape contract honestly.
+
+### 4. Interface Segregation Principle (ISP)
+
+Don't force classes to implement interfaces they don't use. Prefer **focused interfaces** over fat ones.
+
+This connects to the [interface discussion in the coupling section](#fixing-tight-coupling--worked-example): well-designed interfaces should be shaped around what consumers need.
+
+<span class="bad">Fat interface:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+interface Worker {
+  work(): void;
+  eat(): void;
+  sleep(): void;
+  attendMeeting(): void;
+}
+
+// A robot worker is forced to implement eat() and sleep()
+class RobotWorker implements Worker {
+  work() { /* ... */ }
+  eat() { throw new Error("Robots don't eat"); }
+  sleep() { throw new Error("Robots don't sleep"); }
+  attendMeeting() { /* ... */ }
+}
+```
+
+<span class="good">Segregated interfaces:</span> <span class="label label-ts">TypeScript</span>
+
+```typescript
+interface Workable {
+  work(): void;
+}
+
+interface Feedable {
+  eat(): void;
+  sleep(): void;
+}
+
+interface Meetable {
+  attendMeeting(): void;
+}
+
+class HumanWorker implements Workable, Feedable, Meetable {
+  work() { /* ... */ }
+  eat() { /* ... */ }
+  sleep() { /* ... */ }
+  attendMeeting() { /* ... */ }
+}
+
+class RobotWorker implements Workable, Meetable {
+  work() { /* ... */ }
+  attendMeeting() { /* ... */ }
+}
+```
+
+Each class only implements what it actually supports. No dead methods, no thrown errors.
+
+### 5. Dependency Inversion Principle (DIP)
+
+High-level modules should not depend on low-level modules. Both should depend on **abstractions**.
+
+This is the principle behind everything in the [coupling section](#coupling). The PaymentGateway interface, the OrderNotifier interface, the OrderRepository interface: all are DIP in action.
+
+DIP ties SOLID together: SRP tells you *what* to split, OCP tells you *how* to extend, LSP tells you *how* to substitute, ISP tells you *how* to shape interfaces, and DIP tells you *what* to depend on.
+
+### SOLID Summary
+
+| Principle | One-Line Description |
+|---|---|
+| **Single Responsibility** | A class should have one reason to change |
+| **Open/Closed** | Extend behavior without modifying existing code |
+| **Liskov Substitution** | Subtypes must be drop-in replacements for their base types |
+| **Interface Segregation** | Prefer small, focused interfaces over large, general ones |
+| **Dependency Inversion** | Depend on abstractions, not concrete implementations |
+
+<div class="callout tip">
+  <strong>Keep perspective:</strong> SOLID principles are guidelines, not laws. Apply them when they reduce complexity. Forcing SOLID onto simple code makes it harder to read.
+</div>
+
+## MVC Pattern
+
+Model-View-Controller is the architectural pattern behind most web frameworks: Express, Django, Rails, Spring, and many others. It separates an application into three roles:
+
+- **Model**: data and business logic. Services, domain objects, database access.
+- **View**: what the user sees. HTML templates, JSON responses, UI components.
+- **Controller**: handles input and coordinates. Receives a request, calls the model, returns a view.
+
+### MVC in an Express API
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+// Model: service + repository handle data and business logic
+class OrderService {
+  constructor(private repo: OrderRepository) {}
+
+  async getOrder(id: string): Promise<Order | null> {
+    return this.repo.findById(id);
+  }
+}
+
+// Controller: handles HTTP input, calls the model, returns a response (view)
+class OrderController {
+  constructor(private service: OrderService) {}
+
+  async getOrder(req: Request, res: Response) {
+    const order = await this.service.getOrder(req.params.id);
+    if (!order) return res.status(404).json({ error: "Not found" });
+    return res.json(order); // JSON response is the "view"
+  }
+}
+
+// Route wiring
+const controller = new OrderController(orderService);
+app.get("/orders/:id", (req, res) => controller.getOrder(req, res));
+```
+
+The controller doesn't contain business logic or SQL. The service doesn't know about HTTP. The JSON response acts as the view layer in an API context.
+
+<div class="callout info">
+  <strong>Note:</strong> MVP (Model-View-Presenter) and MVVM (Model-View-ViewModel) are frontend variants of this pattern, commonly used in mobile and SPA frameworks. They are not covered here.
+</div>
+
+## Test-Driven Development (TDD)
+
+TDD is a development workflow where you write the test **before** the implementation. It follows a three-step cycle called Red-Green-Refactor:
+
+1. **Red**: write a test that fails (the feature doesn't exist yet)
+2. **Green**: write the minimum code to make the test pass
+3. **Refactor**: clean up the code while keeping the test green
+
+This connects to the [testing pyramid](#are-mocks-reliable-the-testing-pyramid): TDD primarily produces unit tests, the base of the pyramid.
+
+### TDD in Practice: Building an OrderValidator
+
+Let's build an `OrderValidator` using three TDD cycles. <span class="label label-ts">TypeScript</span> with Jest.
+
+**Cycle 1: orders must have at least one item**
+
+```typescript
+// Red: write the failing test
+test("rejects orders with no items", () => {
+  const validator = new OrderValidator();
+  const result = validator.validate({ items: [], total: 50 });
+  expect(result).toEqual({ valid: false, error: "Order must have at least one item" });
+});
+
+// Green: minimum code to pass
+class OrderValidator {
+  validate(order: { items: any[]; total: number }) {
+    if (order.items.length === 0) {
+      return { valid: false, error: "Order must have at least one item" };
+    }
+    return { valid: true };
+  }
+}
+```
+
+**Cycle 2: total must be positive**
+
+```typescript
+// Red: new failing test
+test("rejects orders with zero total", () => {
+  const validator = new OrderValidator();
+  const result = validator.validate({ items: ["item1"], total: 0 });
+  expect(result).toEqual({ valid: false, error: "Order total must be positive" });
+});
+
+// Green: extend to handle this case
+class OrderValidator {
+  validate(order: { items: any[]; total: number }) {
+    if (order.items.length === 0) {
+      return { valid: false, error: "Order must have at least one item" };
+    }
+    if (order.total <= 0) {
+      return { valid: false, error: "Order total must be positive" };
+    }
+    return { valid: true };
+  }
+}
+```
+
+**Cycle 3: valid orders pass**
+
+```typescript
+// Red: test the happy path
+test("accepts valid orders", () => {
+  const validator = new OrderValidator();
+  const result = validator.validate({ items: ["item1"], total: 99.99 });
+  expect(result).toEqual({ valid: true });
+});
+
+// Green: already passes. Refactor: extract a result type.
+interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+class OrderValidator {
+  validate(order: { items: any[]; total: number }): ValidationResult {
+    if (order.items.length === 0) {
+      return { valid: false, error: "Order must have at least one item" };
+    }
+    if (order.total <= 0) {
+      return { valid: false, error: "Order total must be positive" };
+    }
+    return { valid: true };
+  }
+}
+```
+
+### When TDD Works Well
+
+- **Business logic**: validation rules, calculations, state machines
+- **Algorithms**: sorting, filtering, transformation pipelines
+- **Validators**: input checking, schema enforcement
+
+### When TDD Is Less Useful
+
+- **UI code**: visual layout is hard to express as a test-first assertion
+- **Infrastructure**: database migrations, deployment scripts
+- **Exploratory code**: prototyping where requirements are still unclear
+
+<div class="callout tip">
+  <strong>TDD is a design tool, not just a testing tool.</strong> Writing the test first forces you to think about the interface before the implementation. You discover awkward APIs, missing parameters, and unclear responsibilities before you write a single line of production code.
+</div>
+
 ## Key Takeaways
 
 1. **Layer your code** by responsibility, dependencies flow one direction
