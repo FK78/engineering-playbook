@@ -109,3 +109,11 @@
   .ic-msg { max-width: 95%; font-size: 0.88rem; }
   .ic-chat { max-height: 300px; }
 }
+
+/* ===== AUDIO PLAYER ===== */
+.inline-audio-btn { background: none; border: 1px solid #30638e; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; margin-left: 0.5rem; vertical-align: middle; padding: 0; line-height: 28px; transition: all 0.15s; }
+.inline-audio-btn:hover { background: #30638e; filter: brightness(1.2); }
+.inline-audio-btn.playing { background: #c62828; border-color: #c62828; }
+.inline-audio-progress { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.5rem; vertical-align: middle; }
+.inline-audio-progress input[type="range"] { width: 120px; height: 4px; cursor: pointer; }
+.inline-audio-progress .audio-time { font-size: 0.7rem; color: #666; }

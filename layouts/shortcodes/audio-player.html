@@ -1,0 +1,28 @@
+{{ $part := .Get "part" }}
+{{ $audioBase := printf "audio/%s" $part }}
+<script>
+(function() {
+  const base = {{ printf "%s/" $audioBase | relURL }};
+  fetch(base + 'manifest.json')
+    .then(r => r.json())
+    .then(sections => {
+      sections.forEach(s => {
+        // Find the heading that matches this section title
+        const headings = document.querySelectorAll('h2, h3');
+        for (const h of headings) {
+          if (h.textContent.trim() === s.title) {
+            const btn = document.createElement('button');
+            btn.className = 'inline-audio-btn';
+            btn.innerHTML = '🔊';
+            btn.title = 'Listen to this section';
+            btn.setAttribute('data-src', base + s.file);
+            btn.onclick = function() { toggleInlineAudio(this); };
+            h.appendChild(btn);
+            break;
+          }
+        }
+      });
+    })
+    .catch(() => {});
+})();
+</script>

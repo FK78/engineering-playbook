@@ -1,0 +1,192 @@
+[
+  {
+    "title": "Introduction",
+    "parent": null,
+    "file": "introduction.mp3"
+  },
+  {
+    "title": "HTTP Basics",
+    "parent": null,
+    "file": "http-basics.mp3"
+  },
+  {
+    "title": "Methods",
+    "parent": "HTTP Basics",
+    "file": "http-basics-methods.mp3"
+  },
+  {
+    "title": "Status Codes",
+    "parent": "HTTP Basics",
+    "file": "http-basics-status-codes.mp3"
+  },
+  {
+    "title": "Headers",
+    "parent": "HTTP Basics",
+    "file": "http-basics-headers.mp3"
+  },
+  {
+    "title": "JSON",
+    "parent": "HTTP Basics",
+    "file": "http-basics-json.mp3"
+  },
+  {
+    "title": "Request and Response in Detail",
+    "parent": "HTTP Basics",
+    "file": "http-basics-request-and-response-in-detail.mp3"
+  },
+  {
+    "title": "Query Parameters vs Request Body",
+    "parent": "HTTP Basics",
+    "file": "http-basics-query-parameters-vs-request-body.mp3"
+  },
+  {
+    "title": "Checkpoint",
+    "parent": "HTTP Basics",
+    "file": "http-basics-checkpoint.mp3"
+  },
+  {
+    "title": "Database Fundamentals",
+    "parent": null,
+    "file": "database-fundamentals.mp3"
+  },
+  {
+    "title": "Tables, Rows, and Columns",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-tables-rows-and-columns.mp3"
+  },
+  {
+    "title": "Keys",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-keys.mp3"
+  },
+  {
+    "title": "JOINs",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-joins.mp3"
+  },
+  {
+    "title": "Indexes",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-indexes.mp3"
+  },
+  {
+    "title": "Normalization",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-normalization.mp3"
+  },
+  {
+    "title": "Transactions",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-transactions.mp3"
+  },
+  {
+    "title": "Checkpoint",
+    "parent": "Database Fundamentals",
+    "file": "database-fundamentals-checkpoint.mp3"
+  },
+  {
+    "title": "Object-Oriented Programming Basics",
+    "parent": null,
+    "file": "object-oriented-programming-basics.mp3"
+  },
+  {
+    "title": "Classes and Objects",
+    "parent": "Object-Oriented Programming Basics",
+    "file": "object-oriented-programming-basics-classes-and-objects.mp3"
+  },
+  {
+    "title": "Interfaces",
+    "parent": "Object-Oriented Programming Basics",
+    "file": "object-oriented-programming-basics-interfaces.mp3"
+  },
+  {
+    "title": "Dependency Injection",
+    "parent": "Object-Oriented Programming Basics",
+    "file": "object-oriented-programming-basics-dependency-injection.mp3"
+  },
+  {
+    "title": "Why This Matters for Architecture",
+    "parent": "Object-Oriented Programming Basics",
+    "file": "object-oriented-programming-basics-why-this-matters-for-architecture.mp3"
+  },
+  {
+    "title": "Checkpoint",
+    "parent": "Object-Oriented Programming Basics",
+    "file": "object-oriented-programming-basics-checkpoint.mp3"
+  },
+  {
+    "title": "Client-Server Model",
+    "parent": "Basic Networking",
+    "file": "basic-networking-client-server-model.mp3"
+  },
+  {
+    "title": "IP Addresses, Ports, and DNS",
+    "parent": "Basic Networking",
+    "file": "basic-networking-ip-addresses-ports-and-dns.mp3"
+  },
+  {
+    "title": "TCP",
+    "parent": "Basic Networking",
+    "file": "basic-networking-tcp.mp3"
+  },
+  {
+    "title": "Latency",
+    "parent": "Basic Networking",
+    "file": "basic-networking-latency.mp3"
+  },
+  {
+    "title": "What Happens When You Type a URL",
+    "parent": "Basic Networking",
+    "file": "basic-networking-what-happens-when-you-type-a-url.mp3"
+  },
+  {
+    "title": "Checkpoint",
+    "parent": "Basic Networking",
+    "file": "basic-networking-checkpoint.mp3"
+  },
+  {
+    "title": "Core Concepts",
+    "parent": "Version Control (Git)",
+    "file": "version-control-git-core-concepts.mp3"
+  },
+  {
+    "title": "Basic Workflow",
+    "parent": "Version Control (Git)",
+    "file": "version-control-git-basic-workflow.mp3"
+  },
+  {
+    "title": "Why It Matters for Architecture",
+    "parent": "Version Control (Git)",
+    "file": "version-control-git-why-it-matters-for-architecture.mp3"
+  },
+  {
+    "title": "Checkpoint",
+    "parent": "Version Control (Git)",
+    "file": "version-control-git-checkpoint.mp3"
+  },
+  {
+    "title": "Navigation and Execution",
+    "parent": "Command Line Basics",
+    "file": "command-line-basics-navigation-and-execution.mp3"
+  },
+  {
+    "title": "Environment Variables",
+    "parent": "Command Line Basics",
+    "file": "command-line-basics-environment-variables.mp3"
+  },
+  {
+    "title": "Why It Matters",
+    "parent": "Command Line Basics",
+    "file": "command-line-basics-why-it-matters.mp3"
+  },
+  {
+    "title": "Checkpoint",
+    "parent": "Command Line Basics",
+    "file": "command-line-basics-checkpoint.mp3"
+  },
+  {
+    "title": "Ready to Start?",
+    "parent": null,
+    "file": "ready-to-start.mp3"
+  }
+]

@@ -705,3 +705,81 @@ function escapeHtml(text) {
   d.textContent = text;
   return d.innerHTML;
 }
+
+// ===== AUDIO PLAYER =====
+
+let currentInlineAudio = null;
+let currentInlineBtn = null;
+
+function toggleInlineAudio(btn) {
+  const src = btn.getAttribute('data-src');
+
+  // Stop current if different
+  if (currentInlineAudio && currentInlineBtn !== btn) {
+    currentInlineAudio.pause();
+    currentInlineAudio.currentTime = 0;
+    currentInlineBtn.innerHTML = '🔊';
+    currentInlineBtn.classList.remove('playing');
+    const oldProgress = currentInlineBtn.parentElement.querySelector('.inline-audio-progress');
+    if (oldProgress) oldProgress.remove();
+    currentInlineAudio = null;
+    currentInlineBtn = null;
+  }
+
+  if (!currentInlineAudio || currentInlineBtn !== btn) {
+    const audio = new Audio(src);
+    currentInlineAudio = audio;
+    currentInlineBtn = btn;
+
+    // Add progress bar next to button
+    let progress = btn.parentElement.querySelector('.inline-audio-progress');
+    if (!progress) {
+      progress = document.createElement('span');
+      progress.className = 'inline-audio-progress';
+      progress.innerHTML = '<input type="range" min="0" max="100" value="0"><span class="audio-time">0:00</span>';
+      btn.after(progress);
+    }
+
+    const seek = progress.querySelector('input');
+    const time = progress.querySelector('.audio-time');
+
+    audio.play();
+    btn.innerHTML = '⏸';
+    btn.classList.add('playing');
+
+    audio.ontimeupdate = () => {
+      if (audio.duration) {
+        seek.value = (audio.currentTime / audio.duration) * 100;
+        time.textContent = fmtTime(audio.currentTime) + ' / ' + fmtTime(audio.duration);
+      }
+    };
+    audio.onended = () => {
+      btn.innerHTML = '🔊';
+      btn.classList.remove('playing');
+      seek.value = 0;
+      time.textContent = '';
+      currentInlineAudio = null;
+      currentInlineBtn = null;
+    };
+    seek.oninput = () => {
+      audio.currentTime = (seek.value / 100) * audio.duration;
+    };
+  } else {
+    // Toggle pause/play
+    if (currentInlineAudio.paused) {
+      currentInlineAudio.play();
+      btn.innerHTML = '⏸';
+      btn.classList.add('playing');
+    } else {
+      currentInlineAudio.pause();
+      btn.innerHTML = '🔊';
+      btn.classList.remove('playing');
+    }
+  }
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return m + ':' + sec.toString().padStart(2, '0');
+}
