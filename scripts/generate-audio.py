@@ -23,11 +23,12 @@ except ImportError:
     print("Install openai: pip3 install openai")
     sys.exit(1)
 
-VOICE = "nova"  # Options: alloy, ash, coral, echo, fable, nova, onyx, sage, shimmer
+VOICE = "marin"  # Recommended: marin, cedar. Others: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse
 MODEL = "gpt-4o-mini-tts"  # gpt-4o-mini-tts (best), tts-1, or tts-1-hd
 AUDIO_DIR = Path("static/audio")
 AUDIO_FORMAT = "opus"
 AUDIO_EXT = ".ogg"  # .ogg for browser compatibility with opus codec
+INSTRUCTIONS = "Speak clearly at a moderate pace, like a knowledgeable teacher explaining concepts to a student. Use natural pauses between sentences."
 
 
 def strip_front_matter(text: str) -> str:
@@ -145,7 +146,7 @@ def generate_audio(text: str, output_path: Path, client: OpenAI, voice: str = VO
     MAX_CHARS = 4096
 
     if len(text) <= MAX_CHARS:
-        response = client.audio.speech.create(model=model, voice=voice, input=text, response_format=AUDIO_FORMAT)
+        response = client.audio.speech.create(model=model, voice=voice, input=text, response_format=AUDIO_FORMAT, instructions=INSTRUCTIONS)
         with open(output_path, "wb") as f:
             for chunk in response.iter_bytes():
                 f.write(chunk)
@@ -167,7 +168,7 @@ def generate_audio(text: str, output_path: Path, client: OpenAI, voice: str = VO
         temp_files = []
         for i, chunk in enumerate(chunks):
             temp_path = output_path.with_suffix(f".part{i}.ogg")
-            response = client.audio.speech.create(model=model, voice=voice, input=chunk, response_format=AUDIO_FORMAT)
+            response = client.audio.speech.create(model=model, voice=voice, input=chunk, response_format=AUDIO_FORMAT, instructions=INSTRUCTIONS)
             with open(temp_path, "wb") as f:
                 for audio_chunk in response.iter_bytes():
                     f.write(audio_chunk)
