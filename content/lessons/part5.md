@@ -721,6 +721,123 @@ res.cookie("session", token, {
   <strong>Real-World Example:</strong> In 2017, Equifax suffered one of the largest data breaches in history, exposing 147 million records. The root cause was an unpatched Apache Struts vulnerability (a form of injection attack) combined with an expired SSL certificate on their intrusion detection system, which meant the breach went undetected for 76 days. This catastrophic failure illustrates why defense in depth matters — a single vulnerability wouldn't have been as devastating if monitoring, patching, and network segmentation had all been functioning properly.
 </div>
 
+
+## Hashing Algorithms
+
+A **hash function** is a one-way function that takes an input of any size and produces a fixed-size output (the hash or digest). The same input always produces the same output, but you cannot reverse the hash to recover the original input.
+
+```text
+"hello"     → SHA-256 → 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+"hello"     → SHA-256 → 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  (same input, same output)
+"hello!"    → SHA-256 → ce06092fb948d9ffac7d1a376f7b656b7c3a2174578e3c3e2d3f8e4e1e7a6b5c  (tiny change, completely different hash)
+```
+
+Key properties:
+
+- **Deterministic**: same input always produces the same hash
+- **One-way**: you cannot recover the input from the hash
+- **Avalanche effect**: a small change in input produces a completely different hash
+- **Fixed size**: output length is constant regardless of input size
+
+### Password Hashing: bcrypt, scrypt, argon2
+
+Password hashing algorithms are intentionally **slow**. This is by design. If an attacker steals your database, a fast hash like SHA-256 lets them try billions of passwords per second. A slow hash like bcrypt limits them to thousands per second, making brute-force attacks impractical.
+
+| Algorithm | Why it's slow | Notes |
+|---|---|---|
+| **bcrypt** | Configurable cost factor (rounds of computation) | The most widely used. Cost factor of 10+ recommended. |
+| **scrypt** | Memory-hard (requires large amounts of RAM) | Harder to attack with GPUs due to memory requirements |
+| **argon2** | Memory-hard + configurable parallelism | Winner of the 2015 Password Hashing Competition. The modern recommendation. |
+
+All three algorithms automatically generate and embed a **salt** (random data mixed with the password before hashing). This means two users with the same password get different hashes, defeating precomputed rainbow table attacks.
+
+<span class="label label-ts">TypeScript</span> -- hashing and verifying a password with bcrypt:
+
+```typescript
+import bcrypt from "bcrypt";
+
+const COST_FACTOR = 12;
+
+async function hashPassword(plaintext: string): Promise<string> {
+  return bcrypt.hash(plaintext, COST_FACTOR);
+}
+
+async function verifyPassword(plaintext: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(plaintext, hash);
+}
+
+// Usage
+const hash = await hashPassword("user-password-here");
+// hash: "$2b$12$LJ3m4ys3Lg..." (includes algorithm, cost, salt, and hash)
+
+const isValid = await verifyPassword("user-password-here", hash); // true
+const isWrong = await verifyPassword("wrong-password", hash);     // false
+```
+
+<span class="label label-py">Python</span> -- same with bcrypt:
+
+```python
+import bcrypt
+
+COST_FACTOR = 12
+
+def hash_password(plaintext: str) -> str:
+    salt = bcrypt.gensalt(rounds=COST_FACTOR)
+    return bcrypt.hashpw(plaintext.encode(), salt).decode()
+
+def verify_password(plaintext: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plaintext.encode(), hashed.encode())
+
+# Usage
+hashed = hash_password("user-password-here")
+# hashed: "$2b$12$LJ3m4ys3Lg..." (includes algorithm, cost, salt, and hash)
+
+assert verify_password("user-password-here", hashed) is True
+assert verify_password("wrong-password", hashed) is False
+```
+
+### Data Integrity Hashing: SHA-256, MD5
+
+These algorithms are designed to be **fast**. They are used for verifying data integrity, not for protecting passwords.
+
+**Use cases:**
+
+- **File checksums**: verify a downloaded file wasn't corrupted or tampered with
+- **Digital signatures**: sign a hash of a document to prove authenticity
+- **Data deduplication**: detect duplicate content by comparing hashes
+- **Cache keys**: generate consistent keys from request parameters
+
+```text
+SHA-256("file contents") → e3b0c44298fc1c149afbf4c8996fb924...
+                           ↑ If the hash matches, the file is intact
+```
+
+### Why MD5 and SHA-1 Are Broken for Security
+
+MD5 and SHA-1 are vulnerable to **collision attacks**: researchers can craft two different inputs that produce the same hash. This breaks any security property that depends on hash uniqueness.
+
+- **MD5**: first practical collision demonstrated in 2004. Considered fully broken.
+- **SHA-1**: first practical collision demonstrated by Google in 2017 (SHAttered attack). Deprecated by all major browsers and certificate authorities.
+
+Both are still fine for non-security purposes like checksums (verifying a file download), but must never be used for passwords, digital signatures, or certificate validation.
+
+### Comparison
+
+| Algorithm | Speed | Use for | Don't use for |
+|---|---|---|---|
+| **bcrypt** | Slow (by design) | Password hashing | Checksums, signatures |
+| **scrypt** | Slow + memory-hard | Password hashing | Checksums, signatures |
+| **argon2** | Slow + memory-hard + tunable | Password hashing (modern best choice) | Checksums, signatures |
+| **SHA-256** | Fast | Checksums, signatures, data integrity | Password hashing |
+| **SHA-1** | Fast | Legacy systems only | Anything security-sensitive (broken) |
+| **MD5** | Very fast | Non-security checksums only | Anything security-sensitive (broken) |
+
+<div class="callout">
+  <strong>Never store plaintext passwords. Never use MD5 or SHA for passwords. Use bcrypt with a cost factor of at least 10.</strong>
+</div>
+
+---
+
 ## Key Takeaways
 
 1. **Authentication ≠ Authorization** — verify identity first, then check permissions
@@ -732,6 +849,7 @@ res.cookie("session", token, {
 7. **Never hardcode secrets** — use environment variables at minimum, a secrets vault in production
 8. **Parameterized queries prevent SQL injection** — never concatenate user input into queries
 9. **Defense in depth** — layer multiple security controls, assume any single one can fail
+10. **Hash passwords with bcrypt/scrypt/argon2** — never use MD5 or SHA for passwords. These algorithms are slow on purpose to resist brute-force attacks
 
 ## Check Your Understanding
 

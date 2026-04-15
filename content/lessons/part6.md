@@ -1031,6 +1031,119 @@ A **sidecar proxy** (typically Envoy) is deployed alongside each service instanc
   A service mesh solves real problems but adds significant operational complexity. Most teams don't need one until they have 20+ services and dedicated platform engineers to manage it.
 </div>
 
+## Twelve-Factor Apps
+
+The [Twelve-Factor App](https://12factor.net/) methodology is a set of principles for building cloud-native applications that are portable, scalable, and maintainable. Originally written by developers at Heroku, these factors capture hard-won lessons about what makes applications behave well in modern cloud environments.
+
+| # | Factor | What It Means | Example / Anti-Pattern |
+|---|---|---|---|
+| 1 | **Codebase** | One codebase tracked in version control, many deploys (staging, prod) | Anti-pattern: separate repos for staging and production versions of the same app |
+| 2 | **Dependencies** | Explicitly declare and isolate all dependencies | `package.json`, `requirements.txt`, `go.mod`. Anti-pattern: assuming the host has `imagemagick` installed globally |
+| 3 | **Config** | Store config (DB URLs, API keys, feature flags) in environment variables, not in code | Anti-pattern: hardcoding `DATABASE_URL = "postgres://prod-db:5432"` in your source code |
+| 4 | **Backing Services** | Treat databases, queues, caches, and email services as attached resources swappable via config | Switching from a local PostgreSQL to Amazon RDS should only require changing an env var |
+| 5 | **Build, Release, Run** | Strict separation between building the artifact, combining it with config (release), and running it | Anti-pattern: SSHing into a server and running `git pull` to deploy |
+| 6 | **Processes** | Run the app as one or more stateless processes. Store shared state externally (Redis, S3, DB) | Anti-pattern: saving user uploads to the local filesystem or relying on sticky sessions for auth state |
+| 7 | **Port Binding** | The app exports HTTP by binding to a port. Your app IS the web server, not a plugin inside Apache/Tomcat | Express listening on port 3000, Gunicorn binding to port 8000 |
+| 8 | **Concurrency** | Scale out by running more processes, not by making one process bigger | Run 10 instances of your API behind a load balancer instead of one giant instance with 64 cores |
+| 9 | **Disposability** | Processes start fast and shut down gracefully. They can be stopped, restarted, or replaced at any time | Containers should handle SIGTERM, finish in-flight requests, and exit cleanly |
+| 10 | **Dev/Prod Parity** | Keep development, staging, and production as similar as possible | Anti-pattern: using SQLite in dev but PostgreSQL in production, or skipping the message queue locally |
+| 11 | **Logs** | Treat logs as event streams. Write to stdout, let the platform (CloudWatch, Datadog, ELK) collect and route them | Anti-pattern: writing logs to `/var/log/app.log` and hoping someone rotates them |
+| 12 | **Admin Processes** | Run admin and management tasks (DB migrations, one-off scripts) as one-off processes in the same environment | `kubectl exec` or `docker run` to run a migration, not SSHing into a server and running a script manually |
+
+<div class="callout">
+  You don't need to follow all 12 factors religiously. But if you violate one, know why. Most cloud-native issues (config in code, stateful processes, local file storage) come from ignoring these principles.
+</div>
+
+## Configuration Management
+
+Configuration management is the practice of **automating server setup and maintenance** so that every server in your fleet is configured identically and reproducibly. Instead of SSHing into servers and running commands by hand, you define the desired state in code and let a tool enforce it.
+
+### Why It Matters
+
+Manual server setup leads to **snowflake servers** where each machine is slightly different: one has an older version of OpenSSL, another has a custom Nginx config that someone tweaked six months ago, a third is missing a cron job. When something breaks, nobody can reproduce the environment, and debugging becomes archaeology.
+
+### Ansible
+
+**Ansible** is the most widely used configuration management tool. It is agentless (connects via SSH, no software to install on target servers), uses YAML playbooks to define tasks, and is idempotent (running the same playbook twice produces the same result).
+
+```yaml
+# deploy-app.yml -- Ansible playbook to install Nginx and deploy an app
+---
+- name: Deploy web application
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Copy Nginx config
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/myapp
+      notify: Restart Nginx
+
+    - name: Enable site
+      file:
+        src: /etc/nginx/sites-available/myapp
+        dest: /etc/nginx/sites-enabled/myapp
+        state: link
+
+    - name: Deploy application code
+      git:
+        repo: https://github.com/myorg/myapp.git
+        dest: /opt/myapp
+        version: "{{ app_version }}"
+
+    - name: Install dependencies
+      pip:
+        requirements: /opt/myapp/requirements.txt
+        virtualenv: /opt/myapp/venv
+
+    - name: Start application service
+      systemd:
+        name: myapp
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+```
+
+Run it with: `ansible-playbook -i inventory.ini deploy-app.yml -e "app_version=v2.1.0"`
+
+This playbook configures any number of servers identically. Add a new server to the inventory file, run the playbook, and it matches the rest of the fleet.
+
+### Chef and Puppet
+
+**Chef** and **Puppet** are older, agent-based configuration management tools. They require an agent installed on each managed server that periodically pulls configuration from a central server. Chef uses Ruby-based "recipes," Puppet uses its own declarative language. Both are still used in large enterprises but have largely been superseded by Ansible for new projects due to Ansible's simpler setup and agentless architecture.
+
+### How It Relates to IaC
+
+Configuration management and Infrastructure as Code are complementary, not competing:
+
+- **Terraform** provisions infrastructure: creates VPCs, EC2 instances, RDS databases, load balancers
+- **Ansible** configures infrastructure: installs software, deploys code, manages services on those servers
+
+Terraform answers "what servers exist?" Ansible answers "what's running on them?"
+
+```text
+Terraform: "Create 3 EC2 instances in us-east-1 behind an ALB"
+     ↓
+Ansible:   "Install Nginx, deploy app v2.1, configure monitoring on all 3"
+```
+
+<div class="callout info">
+  In a containerized world, configuration management is less critical because the Dockerfile IS your configuration. Ansible is still useful for managing the hosts that run your containers, VMs, and non-containerized services.
+</div>
+
+
 ## Key Takeaways
 
 1. **Load balancers** distribute traffic. Use L7 for HTTP-aware routing, L4 for raw TCP performance
@@ -1044,6 +1157,8 @@ A **sidecar proxy** (typically Envoy) is deployed alongside each service instanc
 9. **Web servers and reverse proxies** sit between the internet and your application. Never expose app servers directly. Nginx handles SSL, routing, and connection management so your app doesn't have to
 10. **GitOps** uses Git as the single source of truth for deployments. Push to a repo, an operator applies the change. You get audit trails, easy rollbacks, and guaranteed consistency between your repo and your cluster
 11. **Service meshes** handle service-to-service communication (mTLS, retries, observability) transparently via sidecar proxies. Powerful but operationally complex. Most teams don't need one until they have 20+ services
+12. **Twelve-Factor Apps** provide a checklist for cloud-native applications. Stateless processes, config in env vars, explicit dependencies, and treating logs as streams. If you violate a factor, know why
+13. **Configuration management** (Ansible) automates server setup so every machine is identical. Terraform creates the servers, Ansible configures them. In a containerized world, the Dockerfile replaces most of what config management used to do
 
 ## Check Your Understanding
 

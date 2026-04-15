@@ -640,7 +640,182 @@ Interviewers are not looking for the "right" answer. They want to see structured
 
 ---
 
-## 7. Key Takeaways
+## 7. Architecture Documentation
+
+Good architecture is worthless if no one can understand it six months later. Documentation captures the *why* behind decisions, gives new team members context, and provides a shared vocabulary for discussing the system.
+
+### Architecture Decision Records (ADRs)
+
+An ADR is a short document that captures a single architectural decision, the context that led to it, and the consequences of choosing it. They answer the question new team members always ask: "Why did we build it this way?"
+
+**Standard ADR format:**
+
+| Section | Purpose |
+|---------|---------|
+| **Title** | Short, descriptive name for the decision |
+| **Status** | Proposed, Accepted, Deprecated, Superseded |
+| **Context** | What situation or problem prompted this decision? |
+| **Decision** | What did we decide, and why? |
+| **Consequences** | What are the positive and negative results? |
+
+**Concrete example:**
+
+```
+# ADR-007: Use PostgreSQL over MongoDB for the Order Service
+
+## Status
+Accepted
+
+## Context
+The order service handles financial transactions that require ACID guarantees.
+Orders have a well-defined schema (order ID, line items, totals, status, timestamps)
+that rarely changes. We need complex queries for reporting: joins across orders,
+customers, and products with aggregations. The team has strong SQL experience
+but limited MongoDB experience.
+
+## Decision
+Use PostgreSQL as the primary database for the order service.
+
+## Consequences
+- Positive: ACID transactions protect against partial order writes.
+- Positive: JOINs and aggregations are straightforward for reporting.
+- Positive: Team is already proficient with PostgreSQL.
+- Negative: Horizontal scaling is harder than MongoDB if order volume
+  exceeds a single node's capacity. We accept this trade-off because
+  projected volume (10K orders/day) fits comfortably on one instance
+  for the next 2-3 years.
+- Negative: Schema migrations require more planning than a schemaless store.
+```
+
+**Where to store ADRs:** Keep them in your repository under a `docs/adr/` directory, numbered sequentially (`001-use-postgresql.md`, `002-adopt-event-sourcing.md`). They live with the code and are reviewed in pull requests like any other change.
+
+### C4 Model
+
+The C4 model provides four levels of architecture diagrams, each zooming in further. Think of it like a map: Level 1 is the country view, Level 4 is the street view.
+
+| Level | Name | Shows | Audience |
+|-------|------|-------|----------|
+| 1 | **Context** | Your system as a box, surrounded by users and external systems | Everyone (business, dev, ops) |
+| 2 | **Container** | Major runtime units inside your system (APIs, databases, queues) | Developers, architects |
+| 3 | **Component** | Internal components within a single container | Developers working on that container |
+| 4 | **Code** | Class/module diagrams inside a component | Usually auto-generated, rarely maintained |
+
+**Level 1: Context Diagram (E-Commerce System)**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CONTEXT DIAGRAM                          │
+│                                                                 │
+│   ┌──────────┐         ┌──────────────────────┐                 │
+│   │ Customer │────────>│   E-Commerce System   │                │
+│   │ [Person] │<────────│   [Software System]   │                │
+│   └──────────┘         └──────────┬───────────┘                 │
+│                                   │                             │
+│                    ┌──────────────┼──────────────┐              │
+│                    │              │              │               │
+│                    v              v              v               │
+│             ┌────────────┐ ┌──────────┐  ┌────────────┐        │
+│             │  Payment   │ │  Email   │  │  Shipping  │        │
+│             │  Gateway   │ │ Provider │  │  Partner   │        │
+│             │ [External] │ │[External]│  │ [External] │        │
+│             └────────────┘ └──────────┘  └────────────┘        │
+│                                                                 │
+│   ┌──────────┐                                                  │
+│   │  Admin   │────────> E-Commerce System                       │
+│   │ [Person] │                                                  │
+│   └──────────┘                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Level 2: Container Diagram (E-Commerce System)**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       CONTAINER DIAGRAM                             │
+│                     E-Commerce System                               │
+│                                                                     │
+│   ┌──────────┐      ┌──────────────┐      ┌───────────────┐       │
+│   │ Customer │─────>│  Web App     │─────>│  API Gateway  │       │
+│   │          │      │  [React SPA] │      │  [Kong/NGINX] │       │
+│   └──────────┘      └──────────────┘      └───────┬───────┘       │
+│                                                    │                │
+│                              ┌─────────────────────┼────────┐      │
+│                              │                     │        │      │
+│                              v                     v        v      │
+│                     ┌──────────────┐  ┌──────────┐  ┌──────────┐  │
+│                     │   Order      │  │ Product  │  │   User   │  │
+│                     │   Service    │  │ Service  │  │  Service │  │
+│                     │  [Node.js]   │  │[Node.js] │  │ [Node.js]│  │
+│                     └──────┬───────┘  └────┬─────┘  └────┬─────┘  │
+│                            │               │             │         │
+│                            v               v             v         │
+│                     ┌──────────────┐  ┌──────────┐  ┌──────────┐  │
+│                     │  Order DB    │  │Product DB│  │  User DB │  │
+│                     │ [PostgreSQL] │  │[Postgres]│  │[Postgres]│  │
+│                     └──────────────┘  └──────────┘  └──────────┘  │
+│                            │                                       │
+│                            v                                       │
+│                     ┌──────────────┐      ┌──────────────┐        │
+│                     │  Message     │─────>│  Notification│        │
+│                     │  Queue       │      │  Service     │        │
+│                     │  [RabbitMQ]  │      │  [Node.js]   │        │
+│                     └──────────────┘      └──────────────┘        │
+│                                                                     │
+│                     ┌──────────────┐                                │
+│                     │  Redis       │  (shared cache layer)         │
+│                     │  [Cache]     │                                │
+│                     └──────────────┘                                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+<div class="callout tip">
+Most teams only need Level 1 and Level 2 diagrams. Level 3 is useful for complex services. Level 4 is almost never worth maintaining manually.
+</div>
+
+### Estimation Skills
+
+Architects need to do back-of-envelope estimation to make informed decisions about storage, compute, and bandwidth. You do not need exact numbers. You need the right order of magnitude.
+
+**Key numbers to memorize:**
+
+| Fact | Value |
+|------|-------|
+| Seconds in a day | 86,400 (~100K for rough math) |
+| 1M requests/day | ~12 requests/second |
+| 1 char (ASCII) | 1 byte |
+| 1 KB | ~1,000 characters of text |
+| 1 MB | ~1,000 KB |
+| 1 GB | ~1,000 MB |
+
+**Worked example: Storage for a chat application**
+
+*Assumptions:*
+- 1M daily active users
+- Each user sends 50 messages per day
+- Average message size: 200 characters = 200 bytes
+
+*Calculation:*
+
+```
+Messages per day:     1,000,000 users x 50 messages = 50,000,000 messages/day
+Storage per day:      50,000,000 x 200 bytes = 10,000,000,000 bytes = 10 GB/day
+Storage per month:    10 GB x 30 = 300 GB/month
+Storage per year:     300 GB x 12 = 3.6 TB/year
+Storage for 5 years:  3.6 TB x 5 = 18 TB
+
+With metadata overhead (timestamps, user IDs, indexes) — roughly 2x:
+Total 5-year estimate: ~36 TB
+```
+
+This tells you a single PostgreSQL instance (which tops out around 10-20 TB comfortably) will not hold 5 years of data. You need to plan for sharding, archival, or a distributed database like Cassandra from the start.
+
+<div class="callout info">
+Estimation is not about getting the exact number. It is about getting the right order of magnitude. 100GB vs 1TB vs 10TB changes your architecture. 100GB vs 120GB does not.
+</div>
+
+---
+
+## 8. Key Takeaways
 
 1. **Follow a process.** Requirements → Estimation → High-Level → Deep Dive → Trade-offs. Every time.
 2. **Numbers matter.** Back-of-envelope math separates hand-waving from engineering. Know your powers of two and latency numbers.

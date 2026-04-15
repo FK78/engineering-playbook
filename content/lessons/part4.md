@@ -1239,6 +1239,225 @@ Each actor processes one message at a time. No locks, no race conditions. If you
 
 ---
 
+
+## Resilience Patterns
+
+Beyond circuit breakers, distributed systems need multiple strategies to handle overload and failure. Each pattern addresses a different failure mode.
+
+### Backpressure
+
+When a service receives more requests than it can process, it needs to signal upstream to slow down. Without backpressure, an unbounded queue grows until the service runs out of memory and crashes.
+
+```text
+Without backpressure:
+  Producer (fast) → [queue grows forever] → Consumer (slow) → OOM crash
+
+With backpressure:
+  Producer (fast) → [bounded queue, rejects when full] → Consumer (slow)
+                  ← 429 / rejection signal ←
+```
+
+<span class="label label-ts">TypeScript</span> -- bounded queue with backpressure:
+
+```typescript
+class BoundedQueue<T> {
+  private queue: T[] = [];
+
+  constructor(private maxSize: number) {}
+
+  enqueue(item: T): boolean {
+    if (this.queue.length >= this.maxSize) return false; // reject
+    this.queue.push(item);
+    return true;
+  }
+
+  dequeue(): T | undefined {
+    return this.queue.shift();
+  }
+
+  get size() { return this.queue.length; }
+}
+
+// Usage in a request handler
+const taskQueue = new BoundedQueue<Request>(1000);
+
+app.post("/jobs", (req, res) => {
+  if (!taskQueue.enqueue(req)) {
+    return res.status(429).json({ error: "Server overloaded, try again later" });
+  }
+  res.status(202).json({ status: "queued" });
+});
+```
+
+An unbounded queue (a plain array with no limit) accepts everything. Under sustained load, it grows until the process runs out of memory. A bounded queue forces the system to reject work it cannot handle, keeping the service alive for the requests it can process.
+
+### Throttling / Rate Limiting
+
+Throttling limits how many requests a client can make in a given time window. This protects your service from a single client consuming all available capacity.
+
+The **token bucket** algorithm is one of the most common approaches: a bucket holds tokens, each request consumes one, and tokens refill at a fixed rate.
+
+<span class="label label-ts">TypeScript</span> -- token bucket rate limiter:
+
+```typescript
+class TokenBucket {
+  private tokens: number;
+  private lastRefill: number;
+
+  constructor(
+    private capacity: number,
+    private refillRate: number, // tokens per second
+  ) {
+    this.tokens = capacity;
+    this.lastRefill = Date.now();
+  }
+
+  consume(): boolean {
+    this.refill();
+    if (this.tokens < 1) return false;
+    this.tokens--;
+    return true;
+  }
+
+  private refill() {
+    const now = Date.now();
+    const elapsed = (now - this.lastRefill) / 1000;
+    this.tokens = Math.min(this.capacity, this.tokens + elapsed * this.refillRate);
+    this.lastRefill = now;
+  }
+}
+
+// Per-client rate limiting
+const buckets = new Map<string, TokenBucket>();
+
+function getOrCreateBucket(clientId: string): TokenBucket {
+  if (!buckets.has(clientId)) {
+    buckets.set(clientId, new TokenBucket(100, 10)); // 100 burst, 10/sec refill
+  }
+  return buckets.get(clientId)!;
+}
+
+app.use((req, res, next) => {
+  const clientId = req.headers["x-api-key"] as string || req.ip!;
+  if (!getOrCreateBucket(clientId).consume()) {
+    return res.status(429).json({ error: "Rate limit exceeded" });
+  }
+  next();
+});
+```
+
+<div class="callout tip">
+  <strong>In production:</strong> Use API Gateway throttling (AWS API Gateway, Kong, NGINX) instead of application-level rate limiting. API Gateway throttling runs at the edge, rejecting excess traffic before it reaches your service. This protects against DDoS and reduces load on your backend.
+</div>
+
+### Graceful Degradation
+
+When a dependency fails, serve a reduced experience instead of failing completely. The core functionality still works; only the non-critical parts degrade.
+
+**Example:** A product page depends on a recommendations service. When that service is down, the page still loads with product details, pricing, and inventory. The recommendations section falls back to cached popular items instead of personalized results.
+
+<span class="label label-ts">TypeScript</span> -- graceful degradation with fallback:
+
+```typescript
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
+async function getRecommendations(userId: string): Promise<Product[]> {
+  try {
+    const res = await fetch(`http://recommendations-svc/for/${userId}`, {
+      signal: AbortSignal.timeout(500),
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return res.json();
+  } catch {
+    // Fallback: return cached popular items instead of personalized results
+    return getCachedPopularItems();
+  }
+}
+
+async function getCachedPopularItems(): Promise<Product[]> {
+  const cached = await redis.get("popular-items");
+  return cached ? JSON.parse(cached) : [];
+}
+
+// Product page handler
+app.get("/products/:id", async (req, res) => {
+  const [product, recommendations] = await Promise.all([
+    getProduct(req.params.id),                    // critical: must succeed
+    getRecommendations(req.user.id),              // non-critical: can degrade
+  ]);
+
+  res.json({
+    product,
+    recommendations,
+    recommendationsSource: recommendations.length ? "personalized" : "popular",
+  });
+});
+```
+
+The key insight: classify each dependency as critical or non-critical. Critical failures (product data, pricing) return an error. Non-critical failures (recommendations, reviews) return a degraded response.
+
+### Load Shedding
+
+Under extreme load, intentionally drop low-priority requests to protect critical paths. This is different from rate limiting: rate limiting caps per-client usage, while load shedding drops requests system-wide based on priority.
+
+<span class="label label-ts">TypeScript</span> -- priority-based load shedding:
+
+```typescript
+type Priority = "critical" | "normal" | "low";
+
+function getPriority(req: Request): Priority {
+  if (req.path.startsWith("/api/checkout")) return "critical";
+  if (req.path.startsWith("/api/search")) return "normal";
+  return "low";
+}
+
+function loadShedding(currentLoad: () => number, maxLoad: number) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const load = currentLoad();
+    const priority = getPriority(req);
+
+    // At 90%+ load, drop low-priority requests
+    if (load > maxLoad * 0.9 && priority === "low") {
+      return res.status(503).json({ error: "Service busy, try again later" });
+    }
+    // At 95%+ load, drop normal-priority requests too
+    if (load > maxLoad * 0.95 && priority === "normal") {
+      return res.status(503).json({ error: "Service busy, try again later" });
+    }
+    // Critical requests always get through
+    next();
+  };
+}
+
+// Usage with a simple load metric (active connections)
+let activeConnections = 0;
+app.use(loadShedding(() => activeConnections, 1000));
+app.use((req, res, next) => {
+  activeConnections++;
+  res.on("finish", () => activeConnections--);
+  next();
+});
+```
+
+### Comparison
+
+| Pattern | What it does | When to use |
+|---|---|---|
+| **Backpressure** | Rejects new work when the queue is full, signaling upstream to slow down | Service is processing slower than requests arrive |
+| **Throttling / Rate Limiting** | Caps requests per client to a fixed rate | Protecting against abusive or misconfigured clients |
+| **Graceful Degradation** | Returns a reduced response when a dependency fails | Non-critical features that can fall back to cached or default data |
+| **Load Shedding** | Drops low-priority requests under extreme load | Protecting critical paths (checkout, payments) during traffic spikes |
+
+<div class="callout info">
+  <strong>These patterns complement each other.</strong> A production system typically uses rate limiting at the API gateway, backpressure on internal queues, circuit breakers on downstream calls, graceful degradation for non-critical features, and load shedding as a last resort under extreme load.
+</div>
+
+---
+
 ## Key Takeaways
 
 1. **CAP theorem** — during a network partition, choose consistency (reject requests) or availability (serve stale data). Partition tolerance is mandatory
@@ -1248,6 +1467,7 @@ Each actor processes one message at a time. No locks, no race conditions. If you
 5. **The network is unreliable** — add retries with exponential backoff, timeouts, and circuit breakers to every external call
 6. **Circuit breakers** prevent cascading failures — fail fast instead of waiting for a dead service
 7. **Observability = logs + metrics + traces** — use correlation IDs to tie requests together across services
+8. **Resilience patterns** — use backpressure, throttling, graceful degradation, and load shedding together to handle overload and partial failures
 
 ## Check Your Understanding
 

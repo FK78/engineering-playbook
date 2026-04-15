@@ -924,7 +924,190 @@ async def transfer(from_id: str, to_id: str, amount: float) -> None:
 
 ---
 
-## 9. Key Takeaways
+## 9. The N+1 Problem
+
+The N+1 problem is the most common performance pitfall in database-backed applications. It happens when your code fetches a list of N items, then makes N additional queries to load related data for each item. Instead of 2 queries (one for the list, one JOIN for the related data), you end up with N+1.
+
+**Example:** You load 100 orders, then for each order you query the customer. That is 1 + 100 = 101 queries instead of a single JOIN that returns everything in one round trip.
+
+### The Problem in Action
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+// BAD: N+1 — 1 query for orders + N queries for customers
+const orders = await prisma.order.findMany(); // 1 query
+
+for (const order of orders) {
+  const customer = await prisma.customer.findUnique({
+    where: { id: order.customerId },
+  }); // N queries — one per order
+  console.log(`${customer.name}: ${order.total}`);
+}
+// 100 orders = 101 database round trips
+```
+
+### The Fix: Eager Loading / JOIN
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+// GOOD: 1 query with a JOIN — Prisma eager loads the relation
+const orders = await prisma.order.findMany({
+  include: { customer: true }, // generates a JOIN or batched query
+});
+
+for (const order of orders) {
+  console.log(`${order.customer.name}: ${order.total}`);
+}
+// 100 orders = 1-2 database round trips
+```
+
+<span class="label label-py">Python</span>
+
+```python
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload, Session
+
+# BAD: lazy loading causes N+1
+def get_orders_slow(session: Session) -> list:
+    orders = session.execute(select(Order)).scalars().all()  # 1 query
+    for order in orders:
+        print(order.customer.name)  # N queries — each access triggers a lazy load
+    return orders
+
+# GOOD: joinedload fetches everything in one query
+def get_orders_fast(session: Session) -> list:
+    stmt = select(Order).options(joinedload(Order.customer))
+    orders = session.execute(stmt).scalars().unique().all()  # 1 query with JOIN
+    for order in orders:
+        print(order.customer.name)  # no additional queries
+    return orders
+```
+
+### How to Detect N+1 Queries
+
+- **Query logging:** Enable your ORM's query logger and count the queries per request. If a single page triggers dozens of identical queries with different IDs, you have an N+1.
+- **ORM warnings:** SQLAlchemy can raise errors on lazy loads (`raise_load` option). Prisma logs warnings for unbatched queries in development mode.
+- **APM tools:** Datadog, New Relic, and similar tools show query counts per request. A request with 50+ queries is almost always an N+1.
+
+<div class="callout">
+The N+1 problem is the single most common performance issue in backend applications. If your page is slow, check your query count first.
+</div>
+
+---
+
+## 10. ORMs: Benefits and Trade-offs
+
+An ORM (Object-Relational Mapper) maps database tables to objects in your programming language and generates SQL for you. Instead of writing raw SQL, you interact with classes and methods.
+
+### Popular ORMs
+
+| Language | ORMs |
+|----------|------|
+| TypeScript / JavaScript | Prisma, TypeORM, Drizzle |
+| Python | SQLAlchemy, Django ORM |
+
+### Benefits
+
+- **Faster development:** Write less boilerplate. CRUD operations are one-liners.
+- **Type safety:** Prisma and SQLAlchemy (with type stubs) catch schema mismatches at compile time.
+- **Migrations:** ORMs generate and track schema migrations, keeping your database in sync with your code.
+- **No raw SQL for simple queries:** Fetching a user by ID, listing records with filters, and basic joins are all handled without writing SQL.
+
+### Trade-offs
+
+- **Hides generated SQL:** You may not realize your ORM is producing inefficient queries (the N+1 problem from the previous section).
+- **Complex queries are harder than raw SQL:** Multi-table aggregations, window functions, and recursive CTEs are awkward or impossible in most ORMs.
+- **Performance overhead:** ORM layers add object mapping and query-building overhead that raw SQL avoids.
+- **Abstraction leaks:** When the ORM cannot express what you need, you end up fighting it instead of writing straightforward SQL.
+
+### Prisma Example (TypeScript)
+
+<span class="label label-ts">TypeScript</span>
+
+```typescript
+// schema.prisma — define your model
+// model Order {
+//   id         String   @id @default(uuid())
+//   total      Float
+//   status     String
+//   customerId String
+//   customer   Customer @relation(fields: [customerId], references: [id])
+//   createdAt  DateTime @default(now())
+// }
+
+// Query with relations — Prisma generates the SQL
+const recentOrders = await prisma.order.findMany({
+  where: { status: "COMPLETED" },
+  include: {
+    customer: { select: { name: true, email: true } },
+  },
+  orderBy: { createdAt: "desc" },
+  take: 20,
+});
+// Generated SQL (roughly):
+// SELECT o.*, c.name, c.email FROM orders o
+// JOIN customers c ON o.customer_id = c.id
+// WHERE o.status = 'COMPLETED'
+// ORDER BY o.created_at DESC LIMIT 20
+```
+
+### SQLAlchemy Example (Python)
+
+<span class="label label-py">Python</span>
+
+```python
+from sqlalchemy import String, Float, ForeignKey, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+
+class Base(DeclarativeBase):
+    pass
+
+class Customer(Base):
+    __tablename__ = "customers"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    email: Mapped[str] = mapped_column(String)
+    orders: Mapped[list["Order"]] = relationship(back_populates="customer")
+
+class Order(Base):
+    __tablename__ = "orders"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    total: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"))
+    customer: Mapped["Customer"] = relationship(back_populates="orders")
+
+# Query with a join
+def get_completed_orders(session: Session) -> list[Order]:
+    stmt = (
+        select(Order)
+        .join(Order.customer)
+        .where(Order.status == "COMPLETED")
+        .order_by(Order.created_at.desc())
+        .limit(20)
+    )
+    return session.execute(stmt).scalars().all()
+```
+
+### When to Use Raw SQL vs ORM
+
+| Scenario | Recommendation |
+|----------|---------------|
+| Simple CRUD (create, read, update, delete) | ORM |
+| Queries with a few joins and filters | ORM |
+| Complex reporting and analytics (window functions, CTEs) | Raw SQL |
+| Performance-critical hot paths | Raw SQL |
+| Bulk inserts or updates (thousands of rows) | Raw SQL |
+
+<div class="callout tip">
+Use an ORM for 80% of your queries and raw SQL for the 20% that need performance or complexity. Don't fight the ORM for queries it wasn't designed for.
+</div>
+
+---
+
+## 11. Key Takeaways
 
 1. **No universal database.** Match the database type to the access pattern. Most production systems use multiple databases (polyglot persistence).
 
