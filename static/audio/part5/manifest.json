@@ -1,0 +1,152 @@
+[
+  {
+    "title": "Authentication vs Authorization",
+    "parent": null,
+    "file": "authentication-vs-authorization.ogg"
+  },
+  {
+    "title": "Session-Based Authentication",
+    "parent": "Authentication Patterns",
+    "file": "authentication-patterns-session-based-authentication.ogg"
+  },
+  {
+    "title": "Token-Based Authentication (JWT)",
+    "parent": "Authentication Patterns",
+    "file": "authentication-patterns-token-based-authentication-jwt.ogg"
+  },
+  {
+    "title": "API Keys",
+    "parent": "Authentication Patterns",
+    "file": "authentication-patterns-api-keys.ogg"
+  },
+  {
+    "title": "OAuth 2.0 & OpenID Connect",
+    "parent": null,
+    "file": "oauth-20-openid-connect.ogg"
+  },
+  {
+    "title": "Authorization Code Flow",
+    "parent": "OAuth 2.0 & OpenID Connect",
+    "file": "oauth-20-openid-connect-authorization-code-flow.ogg"
+  },
+  {
+    "title": "Client Credentials Flow",
+    "parent": "OAuth 2.0 & OpenID Connect",
+    "file": "oauth-20-openid-connect-client-credentials-flow.ogg"
+  },
+  {
+    "title": "When to Use Which",
+    "parent": "OAuth 2.0 & OpenID Connect",
+    "file": "oauth-20-openid-connect-when-to-use-which.ogg"
+  },
+  {
+    "title": "Authorization Patterns",
+    "parent": null,
+    "file": "authorization-patterns.ogg"
+  },
+  {
+    "title": "Role-Based Access Control (RBAC)",
+    "parent": "Authorization Patterns",
+    "file": "authorization-patterns-role-based-access-control-rbac.ogg"
+  },
+  {
+    "title": "Attribute-Based Access Control (ABAC)",
+    "parent": "Authorization Patterns",
+    "file": "authorization-patterns-attribute-based-access-control-abac.ogg"
+  },
+  {
+    "title": "Policy-Based Access Control",
+    "parent": "Authorization Patterns",
+    "file": "authorization-patterns-policy-based-access-control.ogg"
+  },
+  {
+    "title": "Rate Limiting",
+    "parent": "API Security",
+    "file": "api-security-rate-limiting.ogg"
+  },
+  {
+    "title": "Input Validation",
+    "parent": "API Security",
+    "file": "api-security-input-validation.ogg"
+  },
+  {
+    "title": "CORS (Cross-Origin Resource Sharing)",
+    "parent": "API Security",
+    "file": "api-security-cors-cross-origin-resource-sharing.ogg"
+  },
+  {
+    "title": "HTTPS",
+    "parent": "API Security",
+    "file": "api-security-https.ogg"
+  },
+  {
+    "title": "Zero Trust Architecture",
+    "parent": null,
+    "file": "zero-trust-architecture.ogg"
+  },
+  {
+    "title": "Core Principles",
+    "parent": "Zero Trust Architecture",
+    "file": "zero-trust-architecture-core-principles.ogg"
+  },
+  {
+    "title": "Micro-Segmentation",
+    "parent": "Zero Trust Architecture",
+    "file": "zero-trust-architecture-micro-segmentation.ogg"
+  },
+  {
+    "title": "What NOT to Do",
+    "parent": "Secrets Management",
+    "file": "secrets-management-what-not-to-do.ogg"
+  },
+  {
+    "title": "The Proper Approach",
+    "parent": "Secrets Management",
+    "file": "secrets-management-the-proper-approach.ogg"
+  },
+  {
+    "title": "SQL Injection",
+    "parent": "Common Vulnerabilities",
+    "file": "common-vulnerabilities-sql-injection.ogg"
+  },
+  {
+    "title": "Cross-Site Scripting (XSS)",
+    "parent": "Common Vulnerabilities",
+    "file": "common-vulnerabilities-cross-site-scripting-xss.ogg"
+  },
+  {
+    "title": "Cross-Site Request Forgery (CSRF)",
+    "parent": "Common Vulnerabilities",
+    "file": "common-vulnerabilities-cross-site-request-forgery-csrf.ogg"
+  },
+  {
+    "title": "Hashing Algorithms",
+    "parent": null,
+    "file": "hashing-algorithms.ogg"
+  },
+  {
+    "title": "Password Hashing: bcrypt, scrypt, argon2",
+    "parent": "Hashing Algorithms",
+    "file": "hashing-algorithms-password-hashing-bcrypt-scrypt-argon2.ogg"
+  },
+  {
+    "title": "Data Integrity Hashing: SHA-256, MD5",
+    "parent": "Hashing Algorithms",
+    "file": "hashing-algorithms-data-integrity-hashing-sha-256-md5.ogg"
+  },
+  {
+    "title": "Why MD5 and SHA-1 Are Broken for Security",
+    "parent": "Hashing Algorithms",
+    "file": "hashing-algorithms-why-md5-and-sha-1-are-broken-for-security.ogg"
+  },
+  {
+    "title": "Comparison",
+    "parent": "Hashing Algorithms",
+    "file": "hashing-algorithms-comparison.ogg"
+  },
+  {
+    "title": "Key Takeaways",
+    "parent": null,
+    "file": "key-takeaways.ogg"
+  }
+]
