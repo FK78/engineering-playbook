@@ -1,0 +1,242 @@
+[
+  {
+    "title": "Load Balancing",
+    "parent": null,
+    "file": "load-balancing.ogg"
+  },
+  {
+    "title": "L4 vs L7 Load Balancing",
+    "parent": "Load Balancing",
+    "file": "load-balancing-l4-vs-l7-load-balancing.ogg"
+  },
+  {
+    "title": "Load Balancing Algorithms",
+    "parent": "Load Balancing",
+    "file": "load-balancing-load-balancing-algorithms.ogg"
+  },
+  {
+    "title": "Auto-Scaling",
+    "parent": null,
+    "file": "auto-scaling.ogg"
+  },
+  {
+    "title": "Scaling Policies",
+    "parent": "Auto-Scaling",
+    "file": "auto-scaling-scaling-policies.ogg"
+  },
+  {
+    "title": "Key Metrics to Scale On",
+    "parent": "Auto-Scaling",
+    "file": "auto-scaling-key-metrics-to-scale-on.ogg"
+  },
+  {
+    "title": "CDNs (Content Delivery Networks)",
+    "parent": null,
+    "file": "cdns-content-delivery-networks.ogg"
+  },
+  {
+    "title": "What CDNs Solve",
+    "parent": "CDNs (Content Delivery Networks)",
+    "file": "cdns-content-delivery-networks-what-cdns-solve.ogg"
+  },
+  {
+    "title": "Cache Invalidation",
+    "parent": "CDNs (Content Delivery Networks)",
+    "file": "cdns-content-delivery-networks-cache-invalidation.ogg"
+  },
+  {
+    "title": "Edge Computing",
+    "parent": "CDNs (Content Delivery Networks)",
+    "file": "cdns-content-delivery-networks-edge-computing.ogg"
+  },
+  {
+    "title": "Why Containers?",
+    "parent": "Containers & Orchestration",
+    "file": "containers-orchestration-why-containers.ogg"
+  },
+  {
+    "title": "Docker Concepts",
+    "parent": "Containers & Orchestration",
+    "file": "containers-orchestration-docker-concepts.ogg"
+  },
+  {
+    "title": "Kubernetes \u2014 The Problems It Solves",
+    "parent": "Containers & Orchestration",
+    "file": "containers-orchestration-kubernetes-the-problems-it-solves.ogg"
+  },
+  {
+    "title": "The Problem",
+    "parent": "Infrastructure as Code (IaC)",
+    "file": "infrastructure-as-code-iac-the-problem.ogg"
+  },
+  {
+    "title": "The Solution",
+    "parent": "Infrastructure as Code (IaC)",
+    "file": "infrastructure-as-code-iac-the-solution.ogg"
+  },
+  {
+    "title": "Immutable Infrastructure",
+    "parent": "Infrastructure as Code (IaC)",
+    "file": "infrastructure-as-code-iac-immutable-infrastructure.ogg"
+  },
+  {
+    "title": "CI/CD Pipelines",
+    "parent": null,
+    "file": "cicd-pipelines.ogg"
+  },
+  {
+    "title": "Blue-Green Deployments",
+    "parent": "CI/CD Pipelines",
+    "file": "cicd-pipelines-blue-green-deployments.ogg"
+  },
+  {
+    "title": "Canary Releases",
+    "parent": "CI/CD Pipelines",
+    "file": "cicd-pipelines-canary-releases.ogg"
+  },
+  {
+    "title": "Why Multi-Region?",
+    "parent": "Multi-Region & Disaster Recovery",
+    "file": "multi-region-disaster-recovery-why-multi-region.ogg"
+  },
+  {
+    "title": "Active-Active vs Active-Passive",
+    "parent": "Multi-Region & Disaster Recovery",
+    "file": "multi-region-disaster-recovery-active-active-vs-active-passive.ogg"
+  },
+  {
+    "title": "RPO and RTO",
+    "parent": "Multi-Region & Disaster Recovery",
+    "file": "multi-region-disaster-recovery-rpo-and-rto.ogg"
+  },
+  {
+    "title": "What Is Serverless?",
+    "parent": "Serverless Architecture",
+    "file": "serverless-architecture-what-is-serverless.ogg"
+  },
+  {
+    "title": "How It Works",
+    "parent": "Serverless Architecture",
+    "file": "serverless-architecture-how-it-works.ogg"
+  },
+  {
+    "title": "Serverless Patterns",
+    "parent": "Serverless Architecture",
+    "file": "serverless-architecture-serverless-patterns.ogg"
+  },
+  {
+    "title": "Cold Starts",
+    "parent": "Serverless Architecture",
+    "file": "serverless-architecture-cold-starts.ogg"
+  },
+  {
+    "title": "When to Use Serverless",
+    "parent": "Serverless Architecture",
+    "file": "serverless-architecture-when-to-use-serverless.ogg"
+  },
+  {
+    "title": "Serverless vs Containers",
+    "parent": "Serverless Architecture",
+    "file": "serverless-architecture-serverless-vs-containers.ogg"
+  },
+  {
+    "title": "Web Servers and Reverse Proxies",
+    "parent": null,
+    "file": "web-servers-and-reverse-proxies.ogg"
+  },
+  {
+    "title": "How It Fits Together",
+    "parent": "Web Servers and Reverse Proxies",
+    "file": "web-servers-and-reverse-proxies-how-it-fits-together.ogg"
+  },
+  {
+    "title": "When Do You Need One?",
+    "parent": "Web Servers and Reverse Proxies",
+    "file": "web-servers-and-reverse-proxies-when-do-you-need-one.ogg"
+  },
+  {
+    "title": "GitOps",
+    "parent": null,
+    "file": "gitops.ogg"
+  },
+  {
+    "title": "How It Works",
+    "parent": "GitOps",
+    "file": "gitops-how-it-works.ogg"
+  },
+  {
+    "title": "GitOps vs Traditional CI/CD",
+    "parent": "GitOps",
+    "file": "gitops-gitops-vs-traditional-cicd.ogg"
+  },
+  {
+    "title": "Benefits",
+    "parent": "GitOps",
+    "file": "gitops-benefits.ogg"
+  },
+  {
+    "title": "Tools",
+    "parent": "GitOps",
+    "file": "gitops-tools.ogg"
+  },
+  {
+    "title": "Service Mesh",
+    "parent": null,
+    "file": "service-mesh.ogg"
+  },
+  {
+    "title": "How It Works",
+    "parent": "Service Mesh",
+    "file": "service-mesh-how-it-works.ogg"
+  },
+  {
+    "title": "What It Handles",
+    "parent": "Service Mesh",
+    "file": "service-mesh-what-it-handles.ogg"
+  },
+  {
+    "title": "Main Tools",
+    "parent": "Service Mesh",
+    "file": "service-mesh-main-tools.ogg"
+  },
+  {
+    "title": "When to Use a Service Mesh",
+    "parent": "Service Mesh",
+    "file": "service-mesh-when-to-use-a-service-mesh.ogg"
+  },
+  {
+    "title": "Twelve-Factor Apps",
+    "parent": null,
+    "file": "twelve-factor-apps.ogg"
+  },
+  {
+    "title": "Configuration Management",
+    "parent": null,
+    "file": "configuration-management.ogg"
+  },
+  {
+    "title": "Why It Matters",
+    "parent": "Configuration Management",
+    "file": "configuration-management-why-it-matters.ogg"
+  },
+  {
+    "title": "Ansible",
+    "parent": "Configuration Management",
+    "file": "configuration-management-ansible.ogg"
+  },
+  {
+    "title": "Chef and Puppet",
+    "parent": "Configuration Management",
+    "file": "configuration-management-chef-and-puppet.ogg"
+  },
+  {
+    "title": "How It Relates to IaC",
+    "parent": "Configuration Management",
+    "file": "configuration-management-how-it-relates-to-iac.ogg"
+  },
+  {
+    "title": "Key Takeaways",
+    "parent": null,
+    "file": "key-takeaways.ogg"
+  }
+]
