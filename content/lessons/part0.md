@@ -44,8 +44,6 @@ quiz:
         terms: ["blue-green", "canary", "branch", "merge", "release", "rollback"]
 ---
 
-# Part 0: Prerequisites
-
 This is a quick refresher on the foundational concepts you will need throughout this course. If you already know this material, skim the checkpoints at the end of each section. If you can answer them, move on.
 
 ---
