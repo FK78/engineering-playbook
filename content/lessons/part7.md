@@ -10,7 +10,7 @@ quiz:
       - "Key-value store with TTL support"
       - "Graph database with session nodes"
     correct: 2
-    explanation: "Key-value stores like Redis are optimized for simple lookups by key with sub-millisecond latency and natively support TTL expiration — exactly what ephemeral session data needs."
+    explanation: "Key-value stores like Redis are optimized for simple lookups by key with sub-millisecond latency and natively support TTL expiration, which is exactly what ephemeral session data needs."
   - question: "Your team implements cache-aside and a user updates their profile, but other users still see stale data for several minutes. Which cache invalidation strategy would best solve this while keeping the system simple?"
     answers:
       - "Increase the TTL to reduce cache misses"
@@ -22,7 +22,7 @@ quiz:
   - question: "You're sharding a multi-tenant SaaS database. Tenant sizes vary from 10 rows to 10 million rows. You choose tenant_id as the shard key. What is the most likely problem?"
     answers:
       - "Cross-shard joins will be impossible"
-      - "Hot spots — large tenants create unbalanced shards"
+      - "Hot spots: large tenants create unbalanced shards"
       - "Shard keys cannot be strings"
       - "Consistent hashing won't work with tenant IDs"
     correct: 1
@@ -37,10 +37,10 @@ quiz:
     explanation: "Read-your-writes consistency ensures that a user who performed a write will see that write reflected in subsequent reads, typically by routing their reads to the leader or a replica known to be up-to-date."
   - question: "A financial trading platform must guarantee that a funds transfer either fully completes or fully rolls back, even during a server crash. Which property set is non-negotiable here?"
     answers:
-      - "BASE — availability matters most for trading"
-      - "ACID — atomicity and durability guarantee the transfer is never partial"
-      - "CAP — partition tolerance is the primary concern"
-      - "Eventual consistency — the balance will converge over time"
+      - "BASE: availability matters most for trading"
+      - "ACID: atomicity and durability guarantee the transfer is never partial"
+      - "CAP: partition tolerance is the primary concern"
+      - "Eventual consistency: the balance will converge over time"
     correct: 1
     explanation: "Financial transactions require ACID guarantees. Atomicity ensures the transfer is all-or-nothing, and durability ensures committed transactions survive crashes. BASE's eventual consistency is unacceptable for money movement."
 concepts:
@@ -64,43 +64,43 @@ case_studies:
   - title: "Fixing the 3-Second Feed Query"
     category: "Scaling Challenge"
     difficulty: "⭐⭐⭐"
-    scenario: "BuzzBoard is a social media platform with 2M daily active users. The home feed — showing posts from followed users, sorted by relevance — is the core feature and accounts for 80% of all traffic. The current implementation runs a single SQL query that joins 6 tables: users, posts, follows, likes, comments, and media. Average feed load time is 3.2 seconds, with p99 at 8 seconds. The PostgreSQL database (db.r6g.2xlarge) is at 78% CPU during peak hours, and adding read replicas hasn't helped because the query itself is expensive. Users are churning — analytics shows a direct correlation between feed load time and 7-day retention. The product team wants sub-500ms feed loads."
+    scenario: "BuzzBoard is a social media platform with 2M daily active users. The home feed, which shows posts from followed users sorted by relevance, is the core feature and accounts for 80% of all traffic. The current implementation runs a single SQL query that joins 6 tables: users, posts, follows, likes, comments, and media. Average feed load time is 3.2 seconds, with p99 at 8 seconds. The PostgreSQL database (db.r6g.2xlarge) is at 78% CPU during peak hours, and adding read replicas hasn't helped because the query itself is expensive. Users are churning. Analytics shows a direct correlation between feed load time and 7-day retention. The product team wants sub-500ms feed loads."
     constraints: "Team: 5 backend engineers, 2 data engineers. Budget: $8K/month additional infrastructure. Timeline: 6 weeks to show measurable improvement. Cannot change the product requirements (feed must show posts from followed users with like/comment counts, sorted by a relevance score). Currently serving 15,000 feed requests/minute at peak."
     prompts:
       - "Should you optimize the existing SQL query (better indexes, materialized views) or fundamentally change how the feed is assembled? What signals tell you which approach is right?"
-      - "If you pre-compute feeds, when do you compute them — on write (fan-out on write) or on read (fan-out on read)? How does the follow graph shape (celebrities with 1M followers vs. average users with 200) affect this decision?"
+      - "If you pre-compute feeds, when do you compute them: on write (fan-out on write) or on read (fan-out on read)? How does the follow graph shape (celebrities with 1M followers vs. average users with 200) affect this decision?"
       - "What storage system would you use for the pre-computed feed? Why might a relational database not be the best fit for this access pattern?"
       - "How do you handle the transition? You can't take the feed offline for a week while you rebuild it."
     approaches:
       - name: "Denormalized Feed Cache with Fan-Out on Write"
-        description: "When a user publishes a post, asynchronously write a feed entry to every follower's pre-computed feed in Redis (sorted set keyed by user_id, scored by relevance). Feed reads become a single Redis ZREVRANGE — no joins, no SQL. Use a background worker to handle fan-out via an SQS queue. For users with >50K followers (celebrities), use fan-out on read instead to avoid write amplification."
-        trade_off: "Feed reads drop to <10ms — a 300x improvement. But write amplification is significant (a post from a user with 10K followers generates 10K Redis writes), storage costs increase substantially, and feed updates are eventually consistent (a new post may take 1-2 seconds to appear in all followers' feeds). The hybrid approach for celebrities adds complexity."
+        description: "When a user publishes a post, asynchronously write a feed entry to every follower's pre-computed feed in Redis (sorted set keyed by user_id, scored by relevance). Feed reads become a single Redis ZREVRANGE with no joins and no SQL. Use a background worker to handle fan-out via an SQS queue. For users with >50K followers (celebrities), use fan-out on read instead to avoid write amplification."
+        trade_off: "Feed reads drop to <10ms, a 300x improvement. But write amplification is significant (a post from a user with 10K followers generates 10K Redis writes), storage costs increase substantially, and feed updates are eventually consistent (a new post may take 1-2 seconds to appear in all followers' feeds). The hybrid approach for celebrities adds complexity."
       - name: "Materialized View + Aggressive Caching"
         description: "Create a PostgreSQL materialized view that pre-joins the 6 tables and refreshes every 60 seconds. Add a Redis cache layer in front with a 30-second TTL for individual feed pages. Optimize the materialized view with partial indexes on active users and recent posts. This keeps the existing architecture but eliminates the expensive real-time join."
-        trade_off: "Simplest to implement — no new infrastructure beyond Redis, and the team already knows PostgreSQL. But feeds are up to 90 seconds stale (60s refresh + 30s cache TTL), the materialized view refresh itself is expensive and locks the table briefly, and this approach has a scaling ceiling — at 5M DAU, the materialized view refresh may take too long."
+        trade_off: "Simplest to implement. No new infrastructure beyond Redis, and the team already knows PostgreSQL. But feeds are up to 90 seconds stale (60s refresh + 30s cache TTL), the materialized view refresh itself is expensive and locks the table briefly, and this approach has a scaling ceiling. At 5M DAU, the materialized view refresh may take too long."
       - name: "Dedicated Feed Service with Cassandra"
         description: "Build a separate feed microservice backed by Cassandra. Partition key is user_id, clustering key is relevance_score descending. When a post is created, an event triggers the feed service to write denormalized feed entries for each follower. The feed service exposes a simple API: GET /feed/{userId}?limit=20. The main application delegates all feed reads to this service."
-        trade_off: "Purpose-built for the feed access pattern — Cassandra handles the write throughput of fan-out and provides fast partition scans for reads. But it introduces a new database technology the team must learn and operate, adds a network hop for feed reads, and requires careful handling of the denormalized data (updating a user's display name means updating it across millions of feed entries)."
-  - title: "Multi-Tenant Database — The Noisy Neighbor Problem"
+        trade_off: "Purpose-built for the feed access pattern. Cassandra handles the write throughput of fan-out and provides fast partition scans for reads. But it introduces a new database technology the team must learn and operate, adds a network hop for feed reads, and requires careful handling of the denormalized data (updating a user's display name means updating it across millions of feed entries)."
+  - title: "Multi-Tenant Database: The Noisy Neighbor Problem"
     category: "Architecture Decision"
     difficulty: "⭐⭐⭐"
-    scenario: "DataForge is a B2B analytics SaaS with 500 customers sharing a single PostgreSQL database (db.r6g.4xlarge). Each customer's data is isolated by a tenant_id column on every table. The median customer has 50K rows in the events table, but the largest customer (MegaCorp) has 5M rows — 100x the average. MegaCorp runs complex analytical queries that regularly trigger sequential scans on the events table, pushing database CPU to 95% and causing query latency spikes for all other tenants. Last week, a MegaCorp report query ran for 12 minutes and caused 30-second response times across the platform. Three mid-tier customers have threatened to leave. The sales team is about to close another enterprise customer similar in size to MegaCorp."
-    constraints: "Team: 4 backend engineers, 1 DBA. Budget: $12K/month additional infrastructure. Timeline: must show improvement within 4 weeks (before the 3 unhappy customers' contract renewals). Cannot break the existing API contract — tenants access data through the same REST API. Currently 500 tenants, expecting 50 more per quarter."
+    scenario: "DataForge is a B2B analytics SaaS with 500 customers sharing a single PostgreSQL database (db.r6g.4xlarge). Each customer's data is isolated by a tenant_id column on every table. The median customer has 50K rows in the events table, but the largest customer (MegaCorp) has 5M rows, 100x the average. MegaCorp runs complex analytical queries that regularly trigger sequential scans on the events table, pushing database CPU to 95% and causing query latency spikes for all other tenants. Last week, a MegaCorp report query ran for 12 minutes and caused 30-second response times across the platform. Three mid-tier customers have threatened to leave. The sales team is about to close another enterprise customer similar in size to MegaCorp."
+    constraints: "Team: 4 backend engineers, 1 DBA. Budget: $12K/month additional infrastructure. Timeline: must show improvement within 4 weeks (before the 3 unhappy customers' contract renewals). Cannot break the existing API contract, so tenants access data through the same REST API. Currently 500 tenants, expecting 50 more per quarter."
     prompts:
       - "What are the different strategies for isolating tenant workloads in a shared database? Think about the spectrum from query-level throttling to full database-per-tenant."
       - "How do you decide which tenants get their own database vs. staying in the shared pool? What criteria beyond data volume matter (query patterns, SLA tier, revenue)?"
       - "How do you migrate MegaCorp's data to a separate database without downtime? What's the sequence of operations to ensure no data is lost or duplicated during the move?"
       - "How does your solution handle the next MegaCorp-sized customer the sales team is about to close?"
     approaches:
-      - name: "Tiered Isolation — Silo Large Tenants, Pool the Rest"
+      - name: "Tiered Isolation: Silo Large Tenants, Pool the Rest"
         description: "Move MegaCorp (and future enterprise tenants) to a dedicated RDS instance. Keep the remaining 499 tenants on the shared database. Add a tenant routing layer in the application that directs queries to the correct database based on tenant_id. Enterprise tenants get their own connection pool and can run heavy queries without affecting others. Use AWS DMS for zero-downtime migration of MegaCorp's data."
         trade_off: "Directly solves the noisy neighbor problem for the biggest offenders. But you now manage multiple databases (schema migrations must run on all of them), the routing layer adds complexity, and you need a clear policy for when a tenant 'graduates' to a dedicated instance. Cost scales linearly with the number of siloed tenants."
       - name: "Query-Level Throttling + Read Replicas for Analytics"
         description: "Implement per-tenant query throttling using pg_stat_statements monitoring and connection pool limits (e.g., MegaCorp gets max 5 concurrent queries). Route all analytical/reporting queries to a dedicated read replica, keeping the primary for transactional workloads. Add statement_timeout per tenant tier (enterprise: 60s, standard: 10s). This keeps all tenants in one database but prevents any single tenant from monopolizing resources."
-        trade_off: "No data migration needed — fastest to implement (days, not weeks). But it's a band-aid: throttling MegaCorp's queries means their reports run slower, which may violate their SLA. Read replicas help with read load but don't solve the fundamental problem of a 5M-row table scan competing with small-tenant queries. This buys time but doesn't scale."
+        trade_off: "No data migration needed, making it the fastest to implement (days, not weeks). But it's a band-aid: throttling MegaCorp's queries means their reports run slower, which may violate their SLA. Read replicas help with read load but don't solve the fundamental problem of a 5M-row table scan competing with small-tenant queries. This buys time but doesn't scale."
       - name: "Partition by Tenant with PostgreSQL Table Partitioning"
-        description: "Convert the events table (and other large tables) to use PostgreSQL declarative partitioning with tenant_id as the partition key. Each tenant's data lives in its own physical partition. PostgreSQL's partition pruning ensures that MegaCorp's queries only scan MegaCorp's partition, not the entire table. Large tenants can have their partitions on faster storage (io2 volumes). No application changes needed — the partitioning is transparent to SQL queries."
-        trade_off: "Elegant solution that keeps a single database while providing physical isolation of data. Partition pruning eliminates cross-tenant interference for most queries. But PostgreSQL has practical limits on partition count (500 tenants = 500 partitions per table, which can slow planning), partition maintenance (adding/removing tenants requires DDL), and some queries that span all partitions (admin dashboards) become slower. Works well up to ~1,000 tenants but may need re-evaluation beyond that."
+        description: "Convert the events table (and other large tables) to use PostgreSQL declarative partitioning with tenant_id as the partition key. Each tenant's data lives in its own physical partition. PostgreSQL's partition pruning ensures that MegaCorp's queries only scan MegaCorp's partition, not the entire table. Large tenants can have their partitions on faster storage (io2 volumes). No application changes needed because the partitioning is transparent to SQL queries."
+        trade_off: "Keeps a single database while providing physical isolation of data. Partition pruning eliminates cross-tenant interference for most queries. But PostgreSQL has practical limits on partition count (500 tenants = 500 partitions per table, which can slow planning), partition maintenance (adding/removing tenants requires DDL), and some queries that span all partitions (admin dashboards) become slower. Works well up to ~1,000 tenants but may need re-evaluation beyond that."
 interactive_cases:
   - title: "The Database Performance Report"
     type: "parade-of-facts"
@@ -134,7 +134,7 @@ There is no universal "best database." Each category optimizes for a different a
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Instagram chose PostgreSQL over MongoDB early on because their data — users, photos, likes, follows — was highly relational and required strong consistency for features like follower counts and activity feeds. PostgreSQL's ACID guarantees and mature tooling for joins let them scale to hundreds of millions of users on a well-understood stack. They later added Cassandra for direct messages and Redis for caching, embracing polyglot persistence as each access pattern demanded a different tool.
+  <strong>Real-World Example:</strong> Instagram chose PostgreSQL over MongoDB early on because their data (users, photos, likes, follows) was highly relational and required strong consistency for features like follower counts and activity feeds. PostgreSQL's ACID guarantees and mature tooling for joins let them scale to hundreds of millions of users on a well-understood stack. They later added Cassandra for direct messages and Redis for caching, embracing polyglot persistence as each access pattern demanded a different tool.
 </div>
 
 ### Choosing a Database — Decision Framework
@@ -281,23 +281,23 @@ async def update_user(user_id: str, name: str) -> None:
 
 ## 3. Cache Invalidation
 
-> "There are only two hard things in Computer Science: cache invalidation and naming things." — Phil Karlton
+> "There are only two hard things in Computer Science: cache invalidation and naming things." - Phil Karlton
 
 Cache invalidation is hard because you're maintaining two sources of truth. Every strategy is a trade-off between freshness, complexity, and performance.
 
 ### Strategies
 
-**TTL (Time-To-Live)** — The simplest approach. Data expires after a fixed duration.
+**TTL (Time-To-Live)** is the simplest approach. Data expires after a fixed duration.
 
 - ✅ Zero coordination needed
 - ❌ Stale data until expiry; choosing the right TTL is a guessing game
 
-**Event-Based Invalidation** — Invalidate or update the cache when the underlying data changes.
+**Event-Based Invalidation** invalidates or updates the cache when the underlying data changes.
 
 - ✅ Near-real-time freshness
 - ❌ Requires reliable event delivery (message queues, CDC)
 
-**Versioning** — Append a version number to cache keys. Bump the version on writes; old keys naturally become unreachable.
+**Versioning** appends a version number to cache keys. Bump the version on writes; old keys naturally become unreachable.
 
 - ✅ No explicit deletion needed; atomic "invalidation"
 - ❌ Orphaned keys consume memory until evicted
@@ -354,7 +354,7 @@ new_key = get_versioned_key("product", "42")     # "product:42:v1"
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Facebook faced severe thundering herd problems with Memcached when popular cache keys expired simultaneously across their fleet. They built a system called "lease tokens" — when a cache miss occurs, only the first request gets a lease to rebuild the cache, while subsequent requests either wait briefly or receive a slightly stale value. This event-based invalidation approach with stampede protection allowed them to serve billions of requests per day without overwhelming their MySQL backends.
+  <strong>Real-World Example:</strong> Facebook faced severe thundering herd problems with Memcached when popular cache keys expired simultaneously across their fleet. They built a system called "lease tokens": when a cache miss occurs, only the first request gets a lease to rebuild the cache, while subsequent requests either wait briefly or receive a slightly stale value. This event-based invalidation approach with stampede protection allowed them to serve billions of requests per day without overwhelming their MySQL backends.
 </div>
 
 ---
@@ -365,9 +365,9 @@ Sharding (horizontal partitioning) splits data across multiple database instance
 
 ### Core Concepts
 
-- **Shard Key** — The column/field used to determine which shard holds a record. Choosing a bad shard key is the #1 cause of sharding failures.
-- **Horizontal Partitioning** — Each shard holds a subset of rows (same schema). Contrast with vertical partitioning, which splits columns.
-- **Consistent Hashing** — A technique that minimizes data movement when shards are added or removed.
+- **Shard Key** is the column/field used to determine which shard holds a record. Choosing a bad shard key is the #1 cause of sharding failures.
+- **Horizontal Partitioning** means each shard holds a subset of rows (same schema). Contrast with vertical partitioning, which splits columns.
+- **Consistent Hashing** is a technique that minimizes data movement when shards are added or removed.
 
 <div class="diagram">
 
@@ -481,11 +481,11 @@ print(ring.get_node("user:bob"))    # → "shard-a"
 ```
 
 <div class="callout tip">
-<strong>Shard key selection rules of thumb:</strong> (1) High cardinality — avoid keys with few distinct values. (2) Even distribution — avoid keys that cluster (e.g., country code if 80% of users are in one country). (3) Query alignment — the shard key should appear in your most common queries to avoid scatter-gather.
+<strong>Shard key selection rules of thumb:</strong> (1) High cardinality: avoid keys with few distinct values. (2) Even distribution: avoid keys that cluster (e.g., country code if 80% of users are in one country). (3) Query alignment: the shard key should appear in your most common queries to avoid scatter-gather.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Discord shards their message storage by <code>guild_id</code> (server ID), ensuring all messages for a given server live on the same database node. This shard key aligns perfectly with their most common query — "fetch recent messages in this channel" — since channels belong to guilds, eliminating cross-shard queries. When they migrated from MongoDB to Cassandra, they kept this sharding strategy and used <code>channel_id</code> as the partition key with <code>message_id</code> as the clustering key, enabling efficient time-ordered scans within a single partition.
+  <strong>Real-World Example:</strong> Discord shards their message storage by <code>guild_id</code> (server ID), ensuring all messages for a given server live on the same database node. This shard key aligns perfectly with their most common query, "fetch recent messages in this channel," since channels belong to guilds, eliminating cross-shard queries. When they migrated from MongoDB to Cassandra, they kept this sharding strategy and used <code>channel_id</code> as the partition key with <code>message_id</code> as the clustering key, enabling efficient time-ordered scans within a single partition.
 </div>
 
 
@@ -611,7 +611,7 @@ Data pipelines move and transform data between systems. The two fundamental ques
 | Aspect | ETL (Extract-Transform-Load) | ELT (Extract-Load-Transform) |
 |--------|------------------------------|------------------------------|
 | **Transform location** | In the pipeline (before loading) | In the destination (after loading) |
-| **Raw data preserved?** | No — only transformed data lands | Yes — raw data available for re-processing |
+| **Raw data preserved?** | No, only transformed data lands | Yes, raw data available for re-processing |
 | **Best for** | Structured, well-known schemas | Data lakes, exploratory analytics |
 | **Tools** | Apache Airflow, dbt (transform), Informatica | Snowflake, BigQuery, dbt (in-warehouse) |
 
@@ -620,7 +620,7 @@ Data pipelines move and transform data between systems. The two fundamental ques
 | Aspect | Batch | Streaming |
 |--------|-------|-----------|
 | **Latency** | Minutes to hours | Seconds to milliseconds |
-| **Complexity** | Lower — simpler error handling | Higher — ordering, exactly-once delivery |
+| **Complexity** | Lower, simpler error handling | Higher, ordering, exactly-once delivery |
 | **Cost** | Cheaper for large volumes | More expensive per event |
 | **Use cases** | Nightly reports, ML training | Fraud detection, live dashboards |
 
@@ -689,7 +689,7 @@ async def batch_pipeline(date: str) -> None:
 ```
 
 <div class="callout tip">
-<strong>When to choose streaming over batch:</strong> If your business decision depends on data being <em>minutes</em> old, batch is fine. If it depends on data being <em>seconds</em> old (fraud detection, stock trading, real-time personalization), you need streaming. Most systems use both — streaming for hot-path alerts and batch for historical analytics.
+<strong>When to choose streaming over batch:</strong> If your business decision depends on data being <em>minutes</em> old, batch is fine. If it depends on data being <em>seconds</em> old (fraud detection, stock trading, real-time personalization), you need streaming. Most systems use both: streaming for hot-path alerts and batch for historical analytics.
 </div>
 
 <div class="callout tip">
@@ -819,11 +819,11 @@ class MonotonicReadRouter:
 ```
 
 <div class="callout">
-<strong>These patterns are not free.</strong> Read-your-writes increases leader load. Monotonic reads reduce load-balancing flexibility. Both are targeted fixes — apply them where users notice inconsistency (profile pages, dashboards), not globally.
+<strong>These patterns are not free.</strong> Read-your-writes increases leader load. Monotonic reads reduce load-balancing flexibility. Both are targeted fixes. Apply them where users notice inconsistency (profile pages, dashboards), not globally.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> LinkedIn applies read-your-writes consistency for profile edits — when a user updates their headline or job title, their subsequent page loads are routed to the leader database so they immediately see the change. However, other users viewing that profile are served from replicas with eventual consistency, since a few seconds of staleness is acceptable for third-party viewers. This targeted approach lets LinkedIn avoid routing all reads to the leader while eliminating the most confusing user-facing inconsistency.
+  <strong>Real-World Example:</strong> LinkedIn applies read-your-writes consistency for profile edits. When a user updates their headline or job title, their subsequent page loads are routed to the leader database so they immediately see the change. However, other users viewing that profile are served from replicas with eventual consistency, since a few seconds of staleness is acceptable for third-party viewers. This targeted approach lets LinkedIn avoid routing all reads to the leader while eliminating the most confusing user-facing inconsistency.
 </div>
 
 ---
@@ -853,8 +853,8 @@ These two acronyms represent opposite ends of the consistency-availability spect
 
 The CAP theorem states that during a network partition, a distributed system must choose between **Consistency** (all nodes see the same data) and **Availability** (every request gets a response).
 
-- **ACID systems** (PostgreSQL, MySQL) choose **CP** — they sacrifice availability during partitions to maintain consistency.
-- **BASE systems** (DynamoDB, Cassandra) choose **AP** — they sacrifice consistency during partitions to remain available.
+- **ACID systems** (PostgreSQL, MySQL) choose **CP**: they sacrifice availability during partitions to maintain consistency.
+- **BASE systems** (DynamoDB, Cassandra) choose **AP**: they sacrifice consistency during partitions to remain available.
 
 <div class="diagram">
 
@@ -917,11 +917,11 @@ async def transfer(from_id: str, to_id: str, amount: float) -> None:
 ```
 
 <div class="callout info">
-<strong>When to choose which:</strong> Use ACID when correctness is non-negotiable — financial transactions, inventory management, booking systems. Use BASE when availability and scale matter more than instant consistency — social feeds, analytics counters, recommendation engines. Many systems use both: ACID for the order database, BASE for the product catalog cache.
+<strong>When to choose which:</strong> Use ACID when correctness is non-negotiable: financial transactions, inventory management, booking systems. Use BASE when availability and scale matter more than instant consistency: social feeds, analytics counters, recommendation engines. Many systems use both: ACID for the order database, BASE for the product catalog cache.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Stripe processes billions of dollars in payments and relies on ACID transactions in PostgreSQL to ensure that every charge, refund, and transfer is atomic — money never appears or disappears due to partial failures. In contrast, Twitter's like counts and retweet numbers use BASE semantics with eventual consistency across Cassandra replicas, because showing 10,003 likes instead of 10,005 for a few seconds is an acceptable trade-off for the ability to handle millions of interactions per minute without coordination overhead.
+  <strong>Real-World Example:</strong> Stripe processes billions of dollars in payments and relies on ACID transactions in PostgreSQL to ensure that every charge, refund, and transfer is atomic. Money never appears or disappears due to partial failures. In contrast, Twitter's like counts and retweet numbers use BASE semantics with eventual consistency across Cassandra replicas, because showing 10,003 likes instead of 10,005 for a few seconds is an acceptable trade-off for the ability to handle millions of interactions per minute without coordination overhead.
 </div>
 
 ---
@@ -1128,7 +1128,7 @@ Use an ORM for 80% of your queries and raw SQL for the 20% that need performance
 8. **ACID for money, BASE for scale.** When in doubt, start with ACID (PostgreSQL) and relax consistency only where you've measured that it's the bottleneck.
 
 <div class="callout tip">
-<strong>The data architecture decision tree:</strong> Start with a single relational database. Add a cache when reads are slow. Add read replicas when the leader is overloaded. Shard only when a single node can't hold the data. At each step, you're trading simplicity for scale — make sure you need the scale before paying the complexity cost.
+<strong>The data architecture decision tree:</strong> Start with a single relational database. Add a cache when reads are slow. Add read replicas when the leader is overloaded. Shard only when a single node can't hold the data. At each step, you're trading simplicity for scale. Make sure you need the scale before paying the complexity cost.
 </div>
 
 {{< quiz >}}

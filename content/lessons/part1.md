@@ -58,7 +58,7 @@ case_studies:
   - title: "The 5,000-Line God Class"
     category: "Architecture Decision"
     difficulty: "⭐⭐"
-    scenario: "TechPulse is a B2B SaaS startup with 12,000 paying customers. Their Node.js monolith has grown over 3 years, and the UserService class has ballooned to 5,000 lines — handling authentication, profile management, role-based access, notification preferences, billing integration, and audit logging. Deployments take 45 minutes because the entire app must be tested end-to-end. A recent change to the billing logic broke the login flow, causing a 2-hour outage. The team of 6 engineers spends 30% of their time on merge conflicts in this single file."
+    scenario: "TechPulse is a B2B SaaS startup with 12,000 paying customers. Their Node.js monolith has grown over 3 years, and the UserService class has ballooned to 5,000 lines. It handles authentication, profile management, role-based access, notification preferences, billing integration, and audit logging. Deployments take 45 minutes because the entire app must be tested end-to-end. A recent change to the billing logic broke the login flow, causing a 2-hour outage. The team of 6 engineers spends 30% of their time on merge conflicts in this single file."
     constraints: "6 engineers, $0 additional infrastructure budget for 3 months, must maintain current feature velocity, 99.5% uptime SLA with customers"
     prompts:
       - "Should you refactor the existing UserService incrementally or rewrite it from scratch? What are the risks of each?"
@@ -68,18 +68,18 @@ case_studies:
     approaches:
       - name: "Strangler Fig Refactor"
         description: "Extract one responsibility at a time into its own service class behind an interface. Start with the most independent concern (e.g., audit logging), route calls through the new class, and delete the old code once validated. Repeat for each concern over several sprints."
-        trade_off: "Safest approach with lowest risk of outage, but slow — could take 3-4 months to fully decompose. Requires discipline to avoid adding new code to the old class during the transition."
+        trade_off: "Safest approach with lowest risk of outage, but slow. Could take 3-4 months to fully decompose. Requires discipline to avoid adding new code to the old class during the transition."
       - name: "Parallel Rewrite with Feature Flags"
         description: "Build a new set of focused services (AuthService, ProfileService, BillingBridge, etc.) alongside the existing UserService. Use feature flags to gradually route traffic to the new implementations, comparing outputs for correctness."
         trade_off: "Faster end state and cleaner architecture, but doubles the code surface temporarily. Risk of subtle behavioral differences between old and new implementations. Requires robust feature flag infrastructure."
       - name: "Modular Monolith with Enforced Boundaries"
         description: "Keep everything in one deployable unit but reorganize into modules with explicit public APIs and no direct cross-module imports. Use a linter or build tool to enforce boundaries. Each module owns its own database tables."
-        trade_off: "Least disruptive — no infrastructure changes, no distributed systems complexity. But requires strong team discipline to maintain boundaries, and doesn't solve the deployment coupling problem."
+        trade_off: "Least disruptive: no infrastructure changes, no distributed systems complexity. But requires strong team discipline to maintain boundaries, and doesn't solve the deployment coupling problem."
   - title: "Untangling the Spaghetti Legacy"
     category: "Migration"
     difficulty: "⭐⭐⭐"
-    scenario: "MediTrack, a healthcare scheduling platform, has been acquired by a larger company. The inherited PHP codebase has 200 API endpoints where controllers directly contain SQL queries, business logic, email sending, and PDF generation — often all in the same method. There are no tests. The original developers have left. The system serves 800 medical practices and processes 50,000 appointments per day. Downtime or data bugs directly affect patient care."
-    constraints: "4 engineers (none familiar with the codebase), 9-month deadline to pass a security audit, zero tolerance for data corruption, cannot freeze features — must ship 2 compliance features during migration"
+    scenario: "MediTrack, a healthcare scheduling platform, has been acquired by a larger company. The inherited PHP codebase has 200 API endpoints where controllers directly contain SQL queries, business logic, email sending, and PDF generation, often all in the same method. There are no tests. The original developers have left. The system serves 800 medical practices and processes 50,000 appointments per day. Downtime or data bugs directly affect patient care."
+    constraints: "4 engineers (none familiar with the codebase), 9-month deadline to pass a security audit, zero tolerance for data corruption, cannot freeze features. Must ship 2 compliance features during migration"
     prompts:
       - "With 200 endpoints and no tests, how do you even start? What's your strategy for understanding what the code actually does?"
       - "How do you introduce layers (controller → service → repository) without rewriting everything at once?"
@@ -87,11 +87,11 @@ case_studies:
       - "How do you ensure the refactored code behaves identically to the original when there are no existing tests?"
     approaches:
       - name: "Characterization Tests First"
-        description: "Before changing any code, write integration tests that capture the current behavior of each endpoint — including bugs. Use HTTP-level tests that hit the endpoint and assert on the response. Once you have a safety net, extract business logic into service classes and SQL into repositories one endpoint at a time."
+        description: "Before changing any code, write integration tests that capture the current behavior of each endpoint, including bugs. Use HTTP-level tests that hit the endpoint and assert on the response. Once you have a safety net, extract business logic into service classes and SQL into repositories one endpoint at a time."
         trade_off: "Highest confidence in correctness, but writing tests for 200 untested endpoints is extremely time-consuming. Could take 2-3 months before any structural improvement begins. Tests may be brittle if they depend on specific database state."
       - name: "Facade Pattern with Incremental Extraction"
         description: "Create a thin service layer that initially just delegates to the existing controller code. New features are built in the clean architecture. For each existing endpoint you touch (bug fix, feature change), extract its logic into the service layer at that time. Over months, the old code shrinks organically."
-        trade_off: "Lets you ship features immediately while improving incrementally. But progress is uneven — high-traffic endpoints get cleaned up while rarely-touched ones stay messy. Could take 18+ months to fully migrate at natural pace."
+        trade_off: "Lets you ship features immediately while improving incrementally. But progress is uneven: high-traffic endpoints get cleaned up while rarely-touched ones stay messy. Could take 18+ months to fully migrate at natural pace."
       - name: "Priority-Based Rewrite of Critical Paths"
         description: "Identify the 20-30 endpoints that handle sensitive data (patient records, payments, authentication) and rewrite them with proper layering, input validation, and audit logging. Leave the remaining 170+ endpoints as-is until the security audit passes."
         trade_off: "Fastest path to passing the security audit and protecting patient data. But creates a two-tier codebase where critical paths are clean and everything else is legacy. Risk of the 'everything else' never getting cleaned up."
@@ -100,7 +100,7 @@ interactive_cases:
     type: "great-unknown"
     difficulty: "⭐⭐"
     brief: "A CTO calls you saying 'our app is slow and the team can't ship features fast enough.' That's all they tell you. Your job is to ask the right questions to uncover the real problem."
-    opening: "Hi, thanks for taking this call. Look, I'll be honest — things aren't going well. Our app is slow, and the team just can't ship features fast enough. We need help figuring out what's wrong."
+    opening: "Hi, thanks for taking this call. Look, I'll be honest, things aren't going well. Our app is slow, and the team just can't ship features fast enough. We need help figuring out what's wrong."
     hidden_facts: "The app is a 3-year-old Node.js monolith. 15 developers. Controllers have 2000+ lines with SQL, business logic, and HTTP handling mixed together. No tests. Deploy takes 4 hours. The 'slowness' is actually developer velocity, not runtime performance. The database is fine."
 ---
 
@@ -111,17 +111,17 @@ interactive_cases:
 The most common starting pattern. You organize code into horizontal layers, each with a distinct responsibility. A request flows top-down:
 
 <div class="diagram">
-  <div class="layer">Presentation Layer — UI, API controllers, HTTP handling</div>
+  <div class="layer">Presentation Layer: UI, API controllers, HTTP handling</div>
   <div class="arrow">↓</div>
-  <div class="layer">Business Logic Layer — Rules, validation, workflows</div>
+  <div class="layer">Business Logic Layer: Rules, validation, workflows</div>
   <div class="arrow">↓</div>
-  <div class="layer">Data Access Layer — Database queries, ORM, repositories</div>
+  <div class="layer">Data Access Layer: Database queries, ORM, repositories</div>
   <div class="arrow">↓</div>
-  <div class="layer">Database — The actual data store</div>
+  <div class="layer">Database: The actual data store</div>
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> A typical e-commerce startup using Express or FastAPI naturally falls into this pattern. Controllers handle HTTP parsing, services enforce rules like "don't allow checkout with an empty cart," and repositories talk to PostgreSQL. When the team later migrated their product catalog to Elasticsearch, only the repository layer changed — the service and controller code remained untouched.
+  <strong>Real-World Example:</strong> A typical e-commerce startup using Express or FastAPI naturally falls into this pattern. Controllers handle HTTP parsing, services enforce rules like "don't allow checkout with an empty cart," and repositories talk to PostgreSQL. When the team later migrated their product catalog to Elasticsearch, only the repository layer changed. The service and controller code remained untouched.
 </div>
 
 ### The Rules
@@ -152,11 +152,11 @@ Controller (receives HTTP request)
 ### When It Breaks Down
 
 <div class="callout">
-  <strong>Too many layers</strong> — sometimes called "lasagna architecture." If a layer just passes data through without adding value, it's unnecessary overhead.
+  <strong>Too many layers</strong>, sometimes called "lasagna architecture." If a layer just passes data through without adding value, it's unnecessary overhead.
 </div>
 
 <div class="callout">
-  <strong>Leaking abstractions</strong> — when database concepts (SQL, table names) bleed into the business layer, the separation is illusory.
+  <strong>Leaking abstractions</strong>: when database concepts (SQL, table names) bleed into the business layer, the separation is illusory.
 </div>
 
 ## Coupling
@@ -164,7 +164,7 @@ Controller (receives HTTP request)
 Coupling measures how much one component depends on the internals of another.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Netflix's early notification system was tightly coupled — the video encoding service directly called email and push notification code. When they needed to add SMS alerts, they had to modify the encoding service. They decoupled by introducing an event bus: services publish events like "encoding complete," and independent notification handlers subscribe to them. This let teams add new notification channels without touching upstream services.
+  <strong>Real-World Example:</strong> Netflix's early notification system was tightly coupled. The video encoding service directly called email and push notification code. When they needed to add SMS alerts, they had to modify the encoding service. They decoupled by introducing an event bus: services publish events like "encoding complete," and independent notification handlers subscribe to them. This let teams add new notification channels without touching upstream services.
 </div>
 
 ### Spectrum: Tight → Loose
@@ -220,7 +220,7 @@ A `PaymentService` that directly calls Stripe's API is tightly coupled: if Strip
 The fix: create a **generic interface** shaped around what your app needs: <span class="label label-ts">TypeScript</span>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Shopify's payment processing supports hundreds of gateways — Stripe, PayPal, Adyen, and more. They achieve this through a PaymentGateway interface that each provider implements. When a merchant switches from Stripe to Adyen, Shopify's core checkout logic doesn't change at all. Only the gateway implementation is swapped, exactly like the pattern shown below.
+  <strong>Real-World Example:</strong> Shopify's payment processing supports hundreds of gateways: Stripe, PayPal, Adyen, and more. They achieve this through a PaymentGateway interface that each provider implements. When a merchant switches from Stripe to Adyen, Shopify's core checkout logic doesn't change at all. Only the gateway implementation is swapped, exactly like the pattern shown below.
 </div>
 
 ```typescript
@@ -255,7 +255,7 @@ class PaymentService {
 
 ### What If a New Gateway Needs More Values?
 
-**Universal** — update the interface with a request object: <span class="label label-ts">TypeScript</span>
+**Universal**: update the interface with a request object: <span class="label label-ts">TypeScript</span>
 
 ```typescript
 interface ChargeRequest {
@@ -270,7 +270,7 @@ interface PaymentGateway {
 }
 ```
 
-**Provider-specific** — keep it inside that implementation: <span class="label label-ts">TypeScript</span>
+**Provider-specific**: keep it inside that implementation: <span class="label label-ts">TypeScript</span>
 
 ```typescript
 class PayPalGateway implements PaymentGateway {
@@ -284,8 +284,8 @@ class PayPalGateway implements PaymentGateway {
 <div class="callout info">
   <strong>How to decide where a field lives:</strong> Ask "Does my service layer know about this value?"
   <ul>
-    <li><strong>Yes</strong> (e.g. <code>billingAddress</code> — collected from the user) → on the interface, optional if not all gateways need it</li>
-    <li><strong>No</strong> (e.g. <code>payerId</code> — a PayPal internal concept) → inside the implementation only</li>
+    <li><strong>Yes</strong> (e.g. <code>billingAddress</code>, collected from the user) → on the interface, optional if not all gateways need it</li>
+    <li><strong>No</strong> (e.g. <code>payerId</code>, a PayPal internal concept) → inside the implementation only</li>
   </ul>
 </div>
 
@@ -295,7 +295,7 @@ class PayPalGateway implements PaymentGateway {
 2. **Only include what your service actually uses.** Stripe has hundreds of options. Your app uses 3-4.
 3. **When a second provider arrives, refactor.** You'll discover what's truly universal vs provider-specific.
 
-<span class="label label-ts">TypeScript</span> — Day 1, only Stripe exists:
+<span class="label label-ts">TypeScript</span>, Day 1, only Stripe exists:
 
 ```typescript
 interface ChargeRequest {
@@ -317,7 +317,7 @@ class StripeGateway implements PaymentGateway {
 }
 ```
 
-Day 200, adding PayPal — refactor:
+Day 200, adding PayPal. Refactor:
 
 ```typescript
 interface ChargeRequest {
@@ -335,18 +335,18 @@ interface ChargeRequest {
 | **3+ providers** | Interface is battle-tested and stable |
 
 <div class="callout info">
-  <strong>You'll never get it perfect on day 1, and you shouldn't try.</strong> The interface will evolve — that's normal.
+  <strong>You'll never get it perfect on day 1, and you shouldn't try.</strong> The interface will evolve. That's normal.
 </div>
 
 ## Testing Loosely Coupled Code
 
-Loose coupling makes code testable — substitute real dependencies with **test doubles**.
+Loose coupling makes code testable. Substitute real dependencies with **test doubles**.
 
 <div class="callout tip">
   <strong>Real-World Example:</strong> Spotify's backend teams rely heavily on test doubles for their microservices. Each service defines interfaces for its dependencies, allowing engineers to run thousands of unit tests in seconds using in-memory fakes. This fast feedback loop lets them deploy to production multiple times per day with confidence, catching logic errors before they ever hit integration environments.
 </div>
 
-<span class="label label-ts">TypeScript</span> — using Jest:
+<span class="label label-ts">TypeScript</span>, using Jest:
 
 ```typescript
 test("createOrder notifies on success", async () => {
@@ -361,7 +361,7 @@ test("createOrder notifies on success", async () => {
 });
 ```
 
-<span class="label label-py">Python</span> — using unittest.mock:
+<span class="label label-py">Python</span>, using unittest.mock:
 
 ```python
 def test_create_order_notifies_on_success():
@@ -386,7 +386,7 @@ def test_create_order_notifies_on_success():
 Mocks are reliable for **logic in isolation**. But they test what you *think* the dependency does, not what it *actually* does.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Google famously documented this problem in their testing culture. Teams that relied solely on mocked unit tests kept shipping bugs where services failed at integration points — serialization mismatches, unexpected nulls from real databases, and timeout behaviors mocks never simulated. They adopted a "Test Sizes" policy (small/medium/large) mirroring the testing pyramid, requiring medium tests with real dependencies for all critical paths.
+  <strong>Real-World Example:</strong> Google famously documented this problem in their testing culture. Teams that relied solely on mocked unit tests kept shipping bugs where services failed at integration points: serialization mismatches, unexpected nulls from real databases, and timeout behaviors mocks never simulated. They adopted a "Test Sizes" policy (small/medium/large) mirroring the testing pyramid, requiring medium tests with real dependencies for all critical paths.
 </div>
 
 <div class="callout">
@@ -417,7 +417,7 @@ Mocks are reliable for **logic in isolation**. But they test what you *think* th
 Cohesion measures how related the responsibilities within a single component are.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> A fintech team inherited a 4,000-line UserService that handled authentication, profile management, KYC verification, email notifications, and audit logging. Every change risked breaking unrelated features, and the file had constant merge conflicts. They split it into five focused services — AuthService, ProfileService, KycService, NotificationService, and AuditService — each under 500 lines. Bug rates dropped and deployment frequency tripled because teams could change one concern without touching the others.
+  <strong>Real-World Example:</strong> A fintech team inherited a 4,000-line UserService that handled authentication, profile management, KYC verification, email notifications, and audit logging. Every change risked breaking unrelated features, and the file had constant merge conflicts. They split it into five focused services (AuthService, ProfileService, KycService, NotificationService, and AuditService), each under 500 lines. Bug rates dropped and deployment frequency tripled because teams could change one concern without touching the others.
 </div>
 
 <span class="bad">Low cohesion (bad):</span> A `UserService` that handles authentication, profile updates, email sending, report generation, and file uploads.
@@ -435,7 +435,7 @@ Cohesion measures how related the responsibilities within a single component are
 The overarching principle. Each part of the system should address one concern only.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Express and Django both use middleware to separate cross-cutting concerns from business logic. Authentication, rate limiting, and request logging are handled by middleware layers before a request ever reaches a route handler. This means adding JWT authentication to 50 endpoints requires changing one middleware file, not 50 handler functions — a textbook application of separation of concerns.
+  <strong>Real-World Example:</strong> Express and Django both use middleware to separate cross-cutting concerns from business logic. Authentication, rate limiting, and request logging are handled by middleware layers before a request ever reaches a route handler. This means adding JWT authentication to 50 endpoints requires changing one middleware file, not 50 handler functions. A textbook application of separation of concerns.
 </div>
 
 | Concern | Where It Lives |
@@ -455,7 +455,7 @@ The overarching principle. Each part of the system should address one concern on
 Encapsulates all data source access behind a clean interface. Your code never sees SQL or connection strings.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> A SaaS startup initially built their app on MySQL with raw SQL queries scattered throughout their services. When they needed to migrate their orders table to DynamoDB for better scalability, they had to rewrite dozens of files. After the migration, they introduced a DAO layer. When they later moved their user data to DynamoDB as well, only the UserDao implementation changed — the rest of the application was untouched.
+  <strong>Real-World Example:</strong> A SaaS startup initially built their app on MySQL with raw SQL queries scattered throughout their services. When they needed to migrate their orders table to DynamoDB for better scalability, they had to rewrite dozens of files. After the migration, they introduced a DAO layer. When they later moved their user data to DynamoDB as well, only the UserDao implementation changed. The rest of the application was untouched.
 </div>
 
 <span class="bad">Without a DAO:</span> <span class="label label-ts">TypeScript</span>
@@ -496,7 +496,7 @@ class OrderService {
 
 ### DAO vs Repository — What's Actually Different?
 
-In practice, often nearly identical. The difference is **intent and scope** — it matters when domain objects span multiple tables.
+In practice, often nearly identical. The difference is **intent and scope**, and it matters when domain objects span multiple tables.
 
 **DAO** = one per *table*: <span class="label label-ts">TypeScript</span>
 
@@ -544,7 +544,7 @@ class OrderService {
 
 | | DAO approach | Repository approach |
 |---|---|---|
-| **Service needs to:** | Call multiple DAOs + assemble | Call `repository.findById()` — done |
+| **Service needs to:** | Call multiple DAOs + assemble | Call `repository.findById()`, done |
 | **Who knows tables?** | Service layer | Only the repository |
 | **Simple CRUD?** | No practical difference | No practical difference |
 
@@ -553,7 +553,7 @@ class OrderService {
 A Repository acts like an **in-memory collection** of domain objects. The fact that a database is involved is completely hidden.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> A logistics company modeled their Shipment aggregate with items, tracking events, and delivery attempts. Their ShipmentRepository loaded and saved the entire aggregate as one unit. When they migrated from PostgreSQL to MongoDB for the shipments domain, the service layer didn't change at all — they simply wrote a new MongoShipmentRepository implementing the same interface. The repository pattern made the database a swappable implementation detail.
+  <strong>Real-World Example:</strong> A logistics company modeled their Shipment aggregate with items, tracking events, and delivery attempts. Their ShipmentRepository loaded and saved the entire aggregate as one unit. When they migrated from PostgreSQL to MongoDB for the shipments domain, the service layer didn't change at all. They simply wrote a new MongoShipmentRepository implementing the same interface. The repository pattern made the database a swappable implementation detail.
 </div>
 
 <span class="label label-ts">TypeScript</span>
@@ -1257,7 +1257,7 @@ class PlaceOrderUseCase {
 }
 ```
 
-The power of this pattern is **swapping adapters** without touching business logic: <span class="label label-ts">TypeScript</span>
+This pattern lets you **swap adapters** without touching business logic: <span class="label label-ts">TypeScript</span>
 
 ```typescript
 // Test adapter: no database needed
@@ -1445,8 +1445,8 @@ class OrderValidator {
 2. **Loose coupling** = depend on abstractions, not implementations
 3. **High cohesion** = each component does one thing well
 4. **Separation of concerns** = the guiding principle behind all of the above
-5. **Loose coupling enables testing** — swap dependencies for mocks/stubs/fakes
-6. **Mocks alone aren't enough** — use the testing pyramid
+5. **Loose coupling enables testing**, swap dependencies for mocks/stubs/fakes
+6. **Mocks alone aren't enough**, use the testing pyramid
 7. **DAO/Repository** = isolate data access behind an interface
 
 ## Check Your Understanding

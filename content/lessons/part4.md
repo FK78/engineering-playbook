@@ -107,39 +107,39 @@ interactive_cases:
 In a distributed system, you can't have everything. The **CAP theorem** states that when a network partition occurs, a distributed data store can guarantee at most **two of three** properties:
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Amazon DynamoDB chose AP (availability + partition tolerance) by default — during a network partition, it continues serving requests even if some reads return slightly stale data. Google Spanner took the opposite approach, choosing CP (consistency + partition tolerance) by using synchronized atomic clocks (TrueTime) across data centers to guarantee globally consistent reads, accepting that writes may be rejected during partitions. DynamoDB suits shopping carts where availability matters most; Spanner suits financial ledgers where consistency is non-negotiable.
+  <strong>Real-World Example:</strong> Amazon DynamoDB chose AP (availability + partition tolerance) by default. During a network partition, it continues serving requests even if some reads return slightly stale data. Google Spanner took the opposite approach, choosing CP (consistency + partition tolerance) by using synchronized atomic clocks (TrueTime) across data centers to guarantee globally consistent reads, accepting that writes may be rejected during partitions. DynamoDB suits shopping carts where availability matters most; Spanner suits financial ledgers where consistency is non-negotiable.
 </div>
 
 <div class="diagram">
-  <div class="layer">Consistency — every read gets the most recent write</div>
+  <div class="layer">Consistency: every read gets the most recent write</div>
   <div class="arrow">+</div>
-  <div class="layer">Availability — every request gets a response (no errors/timeouts)</div>
+  <div class="layer">Availability: every request gets a response (no errors/timeouts)</div>
   <div class="arrow">+</div>
-  <div class="layer">Partition Tolerance — system works despite network failures between nodes</div>
+  <div class="layer">Partition Tolerance: system works despite network failures between nodes</div>
 </div>
 
 <div class="callout">
-<strong>The real choice:</strong> Partition tolerance is non-negotiable in distributed systems — networks <em>will</em> fail. So the actual decision is: during a partition, do you sacrifice <strong>consistency</strong> (serve stale data) or <strong>availability</strong> (reject requests)?
+<strong>The real choice:</strong> Partition tolerance is non-negotiable in distributed systems. Networks <em>will</em> fail. So the actual decision is: during a partition, do you sacrifice <strong>consistency</strong> (serve stale data) or <strong>availability</strong> (reject requests)?
 </div>
 
 ### CP vs AP Systems
 
-**CP (Consistency + Partition Tolerance)** — during a partition, the system refuses to serve requests rather than return stale data.
+**CP (Consistency + Partition Tolerance)**: during a partition, the system refuses to serve requests rather than return stale data.
 
-**AP (Availability + Partition Tolerance)** — during a partition, the system serves requests but may return stale data.
+**AP (Availability + Partition Tolerance)**: during a partition, the system serves requests but may return stale data.
 
 | Database | CAP Priority | Why |
 |---|---|---|
-| PostgreSQL (single node) | CA | No partition tolerance — it's one node |
+| PostgreSQL (single node) | CA | No partition tolerance, it's one node |
 | MongoDB (default config) | CP | Writes go to primary; if primary is unreachable, writes fail |
 | Cassandra | AP | Writes succeed on any node; data syncs eventually |
-| DynamoDB | AP (default) / CP (strong reads) | Configurable — eventual consistency by default, optional strong reads |
-| etcd / ZooKeeper | CP | Used for coordination — correctness over availability |
-| CockroachDB | CP | Distributed SQL — serializable consistency, rejects during partition |
+| DynamoDB | AP (default) / CP (strong reads) | Configurable: eventual consistency by default, optional strong reads |
+| etcd / ZooKeeper | CP | Used for coordination, correctness over availability |
+| CockroachDB | CP | Distributed SQL, serializable consistency, rejects during partition |
 | Redis Cluster | AP | Async replication; a failover can lose recent writes |
-| Consul | CP | Raft consensus — leader must be reachable for writes |
+| Consul | CP | Raft consensus, leader must be reachable for writes |
 
-<span class="label label-ts">TypeScript</span> — choosing consistency level in DynamoDB:
+<span class="label label-ts">TypeScript</span>, choosing consistency level in DynamoDB:
 
 ```typescript
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
@@ -161,7 +161,7 @@ const strongRead = new GetItemCommand({
 });
 ```
 
-<span class="label label-py">Python</span> — same choice in boto3:
+<span class="label label-py">Python</span>, same choice in boto3:
 
 ```python
 import boto3
@@ -180,10 +180,10 @@ response = table.get_item(Key={"orderId": "order-123"}, ConsistentRead=True)
 
 ## Consistency Models
 
-Not all consistency is the same. Different models offer different guarantees — and different costs.
+Not all consistency is the same. Different models offer different guarantees, at different costs.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Facebook (Meta) uses different consistency models for different features. News Feed uses eventual consistency — if a friend's post appears a few seconds late, nobody notices. But for Facebook Pay (money transfers), they use strong consistency to ensure balances are always accurate. For Messenger, they use causal consistency so replies always appear after the message they respond to, even across different data centers. This mix-and-match approach lets them optimize cost and performance per feature.
+  <strong>Real-World Example:</strong> Facebook (Meta) uses different consistency models for different features. News Feed uses eventual consistency. If a friend's post appears a few seconds late, nobody notices. But for Facebook Pay (money transfers), they use strong consistency to ensure balances are always accurate. For Messenger, they use causal consistency so replies always appear after the message they respond to, even across different data centers. This mix-and-match approach lets them optimize cost and performance per feature.
 </div>
 
 ### Strong Consistency
@@ -214,7 +214,7 @@ async function transferMoney(from: string, to: string, amount: number) {
 
 If no new writes occur, all replicas will *eventually* converge to the same value. Reads may return stale data.
 
-**When it matters:** social media feeds, product reviews, analytics dashboards — where slight staleness is acceptable.
+**When it matters:** social media feeds, product reviews, analytics dashboards, where slight staleness is acceptable.
 
 <span class="label label-py">Python</span>
 
@@ -431,17 +431,17 @@ The user always reads from the same replica, so they never see data go backwards
 
 ## Consensus
 
-In a distributed system, how do multiple nodes agree on a single value — like who the leader is, or what the next log entry should be?
+In a distributed system, how do multiple nodes agree on a single value, like who the leader is, or what the next log entry should be?
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Kubernetes relies on etcd, which implements the Raft consensus protocol, to store all cluster state — pod assignments, service configurations, secrets. When you run <code>kubectl apply</code>, the write must be agreed upon by a majority of etcd nodes before it's committed. This is why Kubernetes control planes run 3 or 5 etcd nodes: with 3 nodes, the cluster tolerates 1 failure; with 5, it tolerates 2. If a majority of etcd nodes go down, the cluster can still run existing workloads but can't schedule new ones.
+  <strong>Real-World Example:</strong> Kubernetes relies on etcd, which implements the Raft consensus protocol, to store all cluster state: pod assignments, service configurations, secrets. When you run <code>kubectl apply</code>, the write must be agreed upon by a majority of etcd nodes before it's committed. This is why Kubernetes control planes run 3 or 5 etcd nodes: with 3 nodes, the cluster tolerates 1 failure; with 5, it tolerates 2. If a majority of etcd nodes go down, the cluster can still run existing workloads but can't schedule new ones.
 </div>
 
 This is the **consensus problem**, and it's hard because:
 
 - Nodes can crash at any time
 - Messages can be delayed, duplicated, or lost
-- There's no global clock — nodes disagree on "now"
+- There's no global clock. Nodes disagree on "now"
 
 <div class="diagram">
   <div class="layer">Node A proposes value X</div>
@@ -468,7 +468,7 @@ Paxos solves the same problem but is notoriously difficult to understand and imp
 **Used by:** Google Spanner, Apache ZooKeeper (variant)
 
 <div class="callout info">
-<strong>You don't implement consensus — you use it.</strong> Choose a system that has it built in (etcd, ZooKeeper, Consul). The important thing is understanding <em>what</em> it guarantees: all nodes agree on the same sequence of operations, even when some nodes fail.
+<strong>You don't implement consensus, you use it.</strong> Choose a system that has it built in (etcd, ZooKeeper, Consul). The important thing is understanding <em>what</em> it guarantees: all nodes agree on the same sequence of operations, even when some nodes fail.
 </div>
 
 ---
@@ -478,7 +478,7 @@ Paxos solves the same problem but is notoriously difficult to understand and imp
 Microservices are not a free upgrade from monoliths. They trade one set of problems for another.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Shopify ran one of the largest Ruby on Rails monoliths in the world, serving millions of merchants. Rather than jumping to microservices, they adopted a "modular monolith" approach — splitting the codebase into well-defined components with enforced boundaries, while keeping it as a single deployable unit. They only extracted services (like their Storefront Renderer) when a specific component had a clear, proven need for independent scaling. This avoided the operational overhead of microservices while still achieving team autonomy.
+  <strong>Real-World Example:</strong> Shopify ran one of the largest Ruby on Rails monoliths in the world, serving millions of merchants. Rather than jumping to microservices, they adopted a "modular monolith" approach, splitting the codebase into well-defined components with enforced boundaries, while keeping it as a single deployable unit. They only extracted services (like their Storefront Renderer) when a specific component had a clear, proven need for independent scaling. This avoided the operational overhead of microservices while still achieving team autonomy.
 </div>
 
 ### When Monolith vs Microservices
@@ -500,16 +500,16 @@ Microservices are not a free upgrade from monoliths. They trade one set of probl
 
 These are assumptions developers make that are **false** in distributed systems:
 
-1. **The network is reliable** — it's not. Packets get dropped, connections time out
-2. **Latency is zero** — every network call adds milliseconds
-3. **Bandwidth is infinite** — large payloads cost real time
-4. **The network is secure** — every hop is an attack surface
-5. **Topology doesn't change** — nodes come and go
-6. **There is one administrator** — multiple teams, multiple configs
-7. **Transport cost is zero** — serialization, TLS, load balancers all cost
-8. **The network is homogeneous** — different hardware, different clouds
+1. **The network is reliable**: it's not. Packets get dropped, connections time out
+2. **Latency is zero**: every network call adds milliseconds
+3. **Bandwidth is infinite**: large payloads cost real time
+4. **The network is secure**: every hop is an attack surface
+5. **Topology doesn't change**: nodes come and go
+6. **There is one administrator**: multiple teams, multiple configs
+7. **Transport cost is zero**: serialization, TLS, load balancers all cost
+8. **The network is homogeneous**: different hardware, different clouds
 
-<span class="label label-ts">TypeScript</span> — the network is unreliable, so add retries:
+<span class="label label-ts">TypeScript</span>, the network is unreliable, so add retries:
 
 ```typescript
 async function fetchWithRetry(
@@ -529,7 +529,7 @@ async function fetchWithRetry(
 }
 ```
 
-<span class="label label-py">Python</span> — retries with backoff:
+<span class="label label-py">Python</span>, retries with backoff:
 
 ```python
 import asyncio
@@ -580,7 +580,7 @@ In a microservices architecture, services need to find each other. IP addresses 
 
 Services must report whether they're healthy. Without health checks, load balancers send traffic to dead instances.
 
-<span class="label label-ts">TypeScript</span> — health check endpoint:
+<span class="label label-ts">TypeScript</span>, health check endpoint:
 
 ```typescript
 import express from "express";
@@ -598,7 +598,7 @@ app.get("/health", async (req, res) => {
 });
 ```
 
-<span class="label label-py">Python</span> — FastAPI health check:
+<span class="label label-py">Python</span>, FastAPI health check:
 
 ```python
 from fastapi import FastAPI, Response
@@ -627,15 +627,15 @@ When a downstream service is failing, continuing to call it wastes resources and
 </div>
 
 <div class="diagram">
-  <div class="layer">CLOSED — requests flow normally, failures are counted</div>
+  <div class="layer">CLOSED: requests flow normally, failures are counted</div>
   <div class="arrow">failure threshold exceeded →</div>
-  <div class="layer">OPEN — requests fail immediately, no calls to downstream</div>
+  <div class="layer">OPEN: requests fail immediately, no calls to downstream</div>
   <div class="arrow">cooldown expires →</div>
-  <div class="layer">HALF-OPEN — one test request allowed through</div>
+  <div class="layer">HALF-OPEN: one test request allowed through</div>
   <div class="arrow">success → CLOSED / failure → OPEN</div>
 </div>
 
-<span class="label label-ts">TypeScript</span> — circuit breaker implementation:
+<span class="label label-ts">TypeScript</span>, circuit breaker implementation:
 
 ```typescript
 type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
@@ -730,7 +730,7 @@ A **correlation ID** (or trace ID) is a unique identifier generated at the entry
   <div class="layer">Inventory Service (logs with traceId: abc-123)</div>
 </div>
 
-<span class="label label-ts">TypeScript</span> — tracing middleware for Express:
+<span class="label label-ts">TypeScript</span>, tracing middleware for Express:
 
 ```typescript
 import { randomUUID } from "crypto";
@@ -768,7 +768,7 @@ async function callDownstream(url: string, traceId: string) {
 }
 ```
 
-<span class="label label-py">Python</span> — FastAPI tracing middleware:
+<span class="label label-py">Python</span>, FastAPI tracing middleware:
 
 ```python
 import uuid, time, json, logging
@@ -1462,14 +1462,14 @@ app.use((req, res, next) => {
 
 ## Key Takeaways
 
-1. **CAP theorem** — during a network partition, choose consistency (reject requests) or availability (serve stale data). Partition tolerance is mandatory
-2. **Consistency models** — strong for money, eventual for social features, causal for conversations. Pick the cheapest model that's correct for your use case
-3. **Consensus** (Raft/Paxos) — how distributed nodes agree. Don't implement it — use systems that have it (etcd, ZooKeeper, Consul)
-4. **Start with a monolith** — microservices add network complexity, operational overhead, and distributed debugging. Extract services when you have a proven need
-5. **The network is unreliable** — add retries with exponential backoff, timeouts, and circuit breakers to every external call
-6. **Circuit breakers** prevent cascading failures — fail fast instead of waiting for a dead service
-7. **Observability = logs + metrics + traces** — use correlation IDs to tie requests together across services
-8. **Resilience patterns** — use backpressure, throttling, graceful degradation, and load shedding together to handle overload and partial failures
+1. **CAP theorem**: during a network partition, choose consistency (reject requests) or availability (serve stale data). Partition tolerance is mandatory
+2. **Consistency models**: strong for money, eventual for social features, causal for conversations. Pick the cheapest model that's correct for your use case
+3. **Consensus** (Raft/Paxos): how distributed nodes agree. Don't implement it. Use systems that have it (etcd, ZooKeeper, Consul)
+4. **Start with a monolith**: microservices add network complexity, operational overhead, and distributed debugging. Extract services when you have a proven need
+5. **The network is unreliable**: add retries with exponential backoff, timeouts, and circuit breakers to every external call
+6. **Circuit breakers** prevent cascading failures. Fail fast instead of waiting for a dead service
+7. **Observability = logs + metrics + traces**: use correlation IDs to tie requests together across services
+8. **Resilience patterns**: use backpressure, throttling, graceful degradation, and load shedding together to handle overload and partial failures
 
 ## Check Your Understanding
 

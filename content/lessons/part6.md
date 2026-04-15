@@ -15,7 +15,7 @@ quiz:
         terms: ["cache", "caching", "Redis", "Memcached", "reduce database load", "fewer queries"]
       - label: "identify the bottleneck"
         terms: ["bottleneck", "database", "not the app server", "wrong layer", "adding app servers won't help"]
-    answer: "Adding more app servers won't help — the database is the bottleneck. Vertically scale the DB, add read replicas for read-heavy traffic, or introduce a caching layer to reduce DB load."
+    answer: "Adding more app servers won't help because the database is the bottleneck. Vertically scale the DB, add read replicas for read-heavy traffic, or introduce a caching layer to reduce DB load."
   - q: "Your team deploys a new version and it causes a 500 error rate spike. With a traditional deployment, you'd have to roll back manually. How would blue-green deployment have helped here?"
     concepts:
       - label: "instant rollback"
@@ -26,7 +26,7 @@ quiz:
         terms: ["switch traffic", "route traffic", "load balancer", "DNS", "cut over", "swap"]
       - label: "zero downtime"
         terms: ["zero downtime", "no downtime", "seamless", "users don't notice"]
-    answer: "Blue-green keeps the old version (blue) running while the new version (green) is deployed separately. Traffic is switched at the load balancer. If green fails, you instantly switch back to blue — no manual rollback, no downtime."
+    answer: "Blue-green keeps the old version (blue) running while the new version (green) is deployed separately. Traffic is switched at the load balancer. If green fails, you instantly switch back to blue. No manual rollback, no downtime."
   - q: "Your company runs a single-region setup on AWS us-east-1. A regional outage takes your entire platform offline for 4 hours. The CEO asks you to prevent this. What architecture change do you propose, and what trade-offs does it introduce?"
     concepts:
       - label: "multi-region"
@@ -48,7 +48,7 @@ quiz:
         terms: ["immutable", "replace don't patch", "new instance", "rebuild", "never modify", "disposable"]
       - label: "auditability"
         terms: ["audit", "track", "history", "who changed", "no record", "git log", "review"]
-    answer: "Manual changes create configuration drift — the server no longer matches what's defined in code. There's no audit trail, no review, and no way to reproduce the fix. Infrastructure as Code (Terraform/CloudFormation) and immutable infrastructure prevent this: changes go through code review, are version-controlled, and servers are replaced rather than patched."
+    answer: "Manual changes create configuration drift, meaning the server no longer matches what's defined in code. There's no audit trail, no review, and no way to reproduce the fix. Infrastructure as Code (Terraform/CloudFormation) and immutable infrastructure prevent this: changes go through code review, are version-controlled, and servers are replaced rather than patched."
   - q: "Your API serves users globally but all servers are in us-east-1. Users in Asia report 800ms latency. Adding more servers in us-east-1 doesn't help. What infrastructure pattern reduces this latency?"
     concepts:
       - label: "CDN / edge network"
@@ -61,11 +61,11 @@ quiz:
         terms: ["multi-region", "deploy in Asia", "another region", "closer server", "regional deployment"]
     answer: "The latency is caused by physical distance, not server capacity. Use a CDN to cache static/semi-static content at edge locations near users. For dynamic API calls, deploy to a region closer to Asian users (e.g., ap-southeast-1) or use a multi-region architecture."
 case_studies:
-  - title: "Surviving Black Friday — 10x Traffic Spike"
+  - title: "Surviving Black Friday: 10x Traffic Spike"
     category: "Scaling Challenge"
     difficulty: "⭐⭐"
-    scenario: "ShopStream is a mid-size e-commerce platform selling electronics. They run 2 EC2 instances (m5.large) behind an ALB, with a single db.r5.xlarge RDS PostgreSQL instance. Normal traffic is 200 requests/sec with 150ms average response time. Last Black Friday, traffic spiked to 2,000 requests/sec within 30 minutes — the database CPU hit 100%, connection pools exhausted, and the site returned 503 errors for 6 hours. They lost an estimated $180K in sales. Their normal monthly AWS bill is $5K, and the CFO has approved up to $15K/month during November-December but wants costs back to normal by January."
-    constraints: "Budget: $5K/month normal, $15K/month during peak season. Team: 4 backend engineers, 1 DevOps. Timeline: 8 weeks until next Black Friday. Cannot re-platform the application — must work with the existing Node.js/PostgreSQL stack."
+    scenario: "ShopStream is a mid-size e-commerce platform selling electronics. They run 2 EC2 instances (m5.large) behind an ALB, with a single db.r5.xlarge RDS PostgreSQL instance. Normal traffic is 200 requests/sec with 150ms average response time. Last Black Friday, traffic spiked to 2,000 requests/sec within 30 minutes. The database CPU hit 100%, connection pools exhausted, and the site returned 503 errors for 6 hours. They lost an estimated $180K in sales. Their normal monthly AWS bill is $5K, and the CFO has approved up to $15K/month during November-December but wants costs back to normal by January."
+    constraints: "Budget: $5K/month normal, $15K/month during peak season. Team: 4 backend engineers, 1 DevOps. Timeline: 8 weeks until next Black Friday. Cannot re-platform the application, so it must work with the existing Node.js/PostgreSQL stack."
     prompts:
       - "The database was the bottleneck, not the app servers. What specific database-level changes would you make to handle 10x read traffic without re-architecting the application?"
       - "How would you design the auto-scaling policy for the application tier? What metric would you scale on, and why might CPU not be the best choice for this workload?"
@@ -76,15 +76,15 @@ case_studies:
         description: "Upgrade the RDS instance to db.r5.4xlarge for Black Friday, add 2 read replicas for product catalog and search queries, and introduce a Redis ElastiCache cluster for product pages, category listings, and session data. Application code routes read queries to replicas and checks cache before hitting the database. After the event, scale the RDS instance back down and reduce replica count to 1."
         trade_off: "Straightforward to implement within 8 weeks and doesn't require application re-architecture. But vertical scaling has a ceiling, read replicas add replication lag (stale inventory risk), and the team must modify query routing in the application. Cost is predictable and reversible."
       - name: "Auto-Scaling App Tier + CDN + Queue-Based Order Processing"
-        description: "Set up an ASG with target-tracking on ALB request count (not CPU). Put CloudFront in front of the ALB to cache static assets and product images. Decouple order processing by putting checkout requests into an SQS queue — the API returns 'order received' immediately while workers process orders asynchronously. This protects the database from checkout-spike writes."
+        description: "Set up an ASG with target-tracking on ALB request count (not CPU). Put CloudFront in front of the ALB to cache static assets and product images. Decouple order processing by putting checkout requests into an SQS queue. The API returns 'order received' immediately while workers process orders asynchronously. This protects the database from checkout-spike writes."
         trade_off: "Handles traffic spikes more gracefully and protects the database from write storms. But asynchronous checkout changes the user experience (no instant confirmation), requires careful idempotency handling, and adds operational complexity with SQS/workers. The CDN helps with static content but doesn't reduce database load for dynamic queries."
       - name: "Pre-Scaled Infrastructure with Scheduled Scaling"
         description: "Use scheduled scaling to pre-provision infrastructure before Black Friday: 8 app instances, RDS scaled to db.r5.4xlarge, 3 read replicas, and a warmed Redis cache. Run a load test at 3,000 req/sec two weeks before to validate. Set up CloudWatch alarms and a runbook for manual intervention. Schedule scale-down for December 1st."
-        trade_off: "The most predictable approach — you know exactly what capacity you'll have and can load-test it in advance. But you pay for peak capacity even during quiet hours of the sale, and it doesn't handle unexpected traffic beyond what you pre-provisioned. Best combined with reactive auto-scaling as a safety net."
+        trade_off: "The most predictable approach. You know exactly what capacity you'll have and can load-test it in advance. But you pay for peak capacity even during quiet hours of the sale, and it doesn't handle unexpected traffic beyond what you pre-provisioned. Best combined with reactive auto-scaling as a safety net."
   - title: "From SSH Deploys to Modern CI/CD"
     category: "Migration"
     difficulty: "⭐⭐⭐"
-    scenario: "FieldOps is a logistics SaaS company with a Django monolith running on 8 Ubuntu EC2 instances behind an ALB. Deployments are done by the lead developer who SSHs into each server sequentially, runs git pull, pip install, and restarts gunicorn. The process takes 2 hours, causes 15 minutes of downtime per server (2 hours total rolling), and requires the lead dev to be available. Last month, a bad deploy introduced a database migration bug that took the site down for 4 hours — there was no way to roll back because the migration was destructive. The team has 6 developers, none with DevOps experience, and the CTO wants zero-downtime deployments within 3 months."
+    scenario: "FieldOps is a logistics SaaS company with a Django monolith running on 8 Ubuntu EC2 instances behind an ALB. Deployments are done by the lead developer who SSHs into each server sequentially, runs git pull, pip install, and restarts gunicorn. The process takes 2 hours, causes 15 minutes of downtime per server (2 hours total rolling), and requires the lead dev to be available. Last month, a bad deploy introduced a database migration bug that took the site down for 4 hours. There was no way to roll back because the migration was destructive. The team has 6 developers, none with DevOps experience, and the CTO wants zero-downtime deployments within 3 months."
     constraints: "Team: 6 developers with no DevOps/CI-CD experience. Timeline: 3 months. Budget: $2K/month additional infrastructure. Must support the existing Django/PostgreSQL stack. Cannot afford more than 30 minutes of planned downtime during the migration to the new system."
     prompts:
       - "What's the simplest CI/CD pipeline you could set up that eliminates SSH-based deploys? Consider the team's lack of DevOps experience when choosing tools."
@@ -94,19 +94,19 @@ case_studies:
     approaches:
       - name: "GitHub Actions + AWS CodeDeploy (No Containers)"
         description: "Set up GitHub Actions to run tests on every PR. On merge to main, build an application artifact (zip), upload to S3, and trigger AWS CodeDeploy for a rolling deployment across the 8 EC2 instances with automatic rollback on health check failure. Database migrations run as a separate, manually-triggered pipeline step with a required approval gate. Use Django's migration framework with backward-compatible migrations only (no destructive changes without a multi-step process)."
-        trade_off: "Lowest learning curve — the team keeps their familiar EC2 environment and just adds automation on top. CodeDeploy handles rolling deploys and rollback natively. But the servers are still mutable (configuration drift risk), and you're not solving the underlying 'snowflake server' problem. Good enough for now, but may need revisiting in a year."
+        trade_off: "Lowest learning curve. The team keeps their familiar EC2 environment and just adds automation on top. CodeDeploy handles rolling deploys and rollback natively. But the servers are still mutable (configuration drift risk), and you're not solving the underlying 'snowflake server' problem. Good enough for now, but may need revisiting in a year."
       - name: "Containerize with Docker + ECS Fargate + Blue-Green"
-        description: "Containerize the Django app with Docker. Deploy to ECS Fargate (no servers to manage). Use ECS blue-green deployments via CodeDeploy — deploy the new version as a separate task set, run health checks, then switch ALB traffic. If the new version fails, traffic switches back instantly. Database migrations run in a separate ECS task before the deployment."
-        trade_off: "Eliminates server management entirely and gives true zero-downtime blue-green deployments. But the team must learn Docker, ECS, and task definitions — a steep curve for 6 developers with no DevOps experience. The 3-month timeline is tight. Fargate costs more than EC2 for equivalent compute."
+        description: "Containerize the Django app with Docker. Deploy to ECS Fargate (no servers to manage). Use ECS blue-green deployments via CodeDeploy: deploy the new version as a separate task set, run health checks, then switch ALB traffic. If the new version fails, traffic switches back instantly. Database migrations run in a separate ECS task before the deployment."
+        trade_off: "Eliminates server management entirely and gives true zero-downtime blue-green deployments. But the team must learn Docker, ECS, and task definitions, which is a steep curve for 6 developers with no DevOps experience. The 3-month timeline is tight. Fargate costs more than EC2 for equivalent compute."
       - name: "AWS Elastic Beanstalk with Managed Deployments"
         description: "Migrate the Django app to Elastic Beanstalk, which provides managed EC2 instances, auto-scaling, rolling deployments, and one-click rollback out of the box. Configure rolling deployments with batch size of 2 (25% at a time) and health-check-based rollback. Use Beanstalk's .ebextensions for environment configuration. Database migrations run via a leader_only container command."
-        trade_off: "The fastest path to managed deployments — Beanstalk abstracts away most infrastructure concerns and the team can deploy via git push or the EB CLI. But Beanstalk is opinionated and constraining — customizing networking, scaling policies, or adding sidecars is harder. Teams often outgrow Beanstalk within 1-2 years and face another migration."
+        trade_off: "The fastest path to managed deployments. Beanstalk abstracts away most infrastructure concerns and the team can deploy via git push or the EB CLI. But Beanstalk is opinionated and constraining. Customizing networking, scaling policies, or adding sidecars is harder. Teams often outgrow Beanstalk within 1-2 years and face another migration."
 interactive_cases:
   - title: "Live Streaming Capacity Estimation"
     type: "back-of-envelope"
     difficulty: "⭐⭐"
     brief: "Your company is hosting a major live streaming event and needs to estimate server capacity. The engineering VP wants a back-of-envelope calculation before approving the infrastructure budget."
-    opening: "We've got a live event coming up — 500,000 concurrent viewers, each consuming a 4Mbps video stream. How many servers do we need? Walk me through your math."
+    opening: "We've got a live event coming up. 500,000 concurrent viewers, each consuming a 4Mbps video stream. How many servers do we need? Walk me through your math."
     answer_range: "50-200 servers depending on CDN assumptions, server capacity (10Gbps typical), and CDN offload percentage"
     key_assumptions: "CDN offload (90-99% of traffic), origin server bandwidth, geographic distribution, redundancy factor"
 ---
@@ -133,9 +133,9 @@ A load balancer distributes incoming traffic across multiple servers so no singl
 
 These refer to layers of the OSI networking model:
 
-**Layer 4 (Transport)** — routes based on IP address and TCP/UDP port. It doesn't inspect the request content. Fast and simple.
+**Layer 4 (Transport)** routes based on IP address and TCP/UDP port. It doesn't inspect the request content. Fast and simple.
 
-**Layer 7 (Application)** — inspects HTTP headers, URLs, cookies. Can route `/api/*` to backend servers and `/static/*` to a CDN origin. More flexible, slightly more overhead.
+**Layer 7 (Application)** inspects HTTP headers, URLs, cookies. Can route `/api/*` to backend servers and `/static/*` to a CDN origin. More flexible, slightly more overhead.
 
 <div class="callout info">
   <strong>When to use which?</strong> Use L4 when you just need to spread TCP connections (databases, game servers). Use L7 when you need content-based routing (microservices, A/B testing, API gateways).
@@ -143,11 +143,11 @@ These refer to layers of the OSI networking model:
 
 ### Load Balancing Algorithms
 
-**Round Robin** — requests go to servers in order: 1, 2, 3, 1, 2, 3... Simple but ignores server load.
+**Round Robin** sends requests to servers in order: 1, 2, 3, 1, 2, 3... Simple but ignores server load.
 
-**Least Connections** — sends the next request to whichever server has the fewest active connections. Better for uneven workloads.
+**Least Connections** sends the next request to whichever server has the fewest active connections. Better for uneven workloads.
 
-**Consistent Hashing** — hashes a key (e.g., user ID) to determine which server handles it. The same user always hits the same server. Critical for sticky sessions and distributed caches.
+**Consistent Hashing** hashes a key (e.g., user ID) to determine which server handles it. The same user always hits the same server. Critical for sticky sessions and distributed caches.
 
 <span class="label label-ts">TypeScript</span>
 
@@ -227,20 +227,20 @@ print(ring.get_node("user-108"))
 ```
 
 <div class="callout tip">
-  <strong>Why consistent hashing matters:</strong> When you add or remove a server, only a fraction of keys get remapped — not all of them. This is why it's used in distributed caches (Memcached, Redis Cluster) and databases (DynamoDB, Cassandra).
+  <strong>Why consistent hashing matters:</strong> When you add or remove a server, only a fraction of keys get remapped, not all of them. This is why it's used in distributed caches (Memcached, Redis Cluster) and databases (DynamoDB, Cassandra).
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Twitch, the live video streaming platform, uses consistent hashing in their load balancing layer to route viewers of the same stream to the same set of edge servers. This ensures that the cached video segments for a popular stream are reused efficiently rather than fetched repeatedly from origin. When they add capacity during a major esports event, consistent hashing ensures only a small fraction of viewer connections are redistributed — minimizing buffering interruptions for millions of concurrent viewers.
+  <strong>Real-World Example:</strong> Twitch, the live video streaming platform, uses consistent hashing in their load balancing layer to route viewers of the same stream to the same set of edge servers. This ensures that the cached video segments for a popular stream are reused efficiently rather than fetched repeatedly from origin. When they add capacity during a major esports event, consistent hashing ensures only a small fraction of viewer connections are redistributed, minimizing buffering interruptions for millions of concurrent viewers.
 </div>
 
 ## Auto-Scaling
 
 Scaling means adding capacity to handle more load. There are two directions:
 
-**Vertical Scaling (Scale Up)** — give a single machine more CPU, RAM, or disk. Simple but has a ceiling — you can't infinitely upgrade one box.
+**Vertical Scaling (Scale Up)** gives a single machine more CPU, RAM, or disk. Simple but has a ceiling: you can't infinitely upgrade one box.
 
-**Horizontal Scaling (Scale Out)** — add more machines. No ceiling in theory, but your application must be stateless (or use external state) to work behind a load balancer.
+**Horizontal Scaling (Scale Out)** adds more machines. No ceiling in theory, but your application must be stateless (or use external state) to work behind a load balancer.
 
 <div class="callout">
   <strong>Rule of thumb:</strong> Scale vertically for databases (until you can't), scale horizontally for application servers (from the start).
@@ -250,11 +250,11 @@ Scaling means adding capacity to handle more load. There are two directions:
 
 Auto-scaling groups (ASGs) automatically add or remove instances based on rules:
 
-**Target Tracking** — "Keep average CPU at 60%." The simplest. The ASG adds/removes instances to maintain the target.
+**Target Tracking**: "Keep average CPU at 60%." The simplest. The ASG adds/removes instances to maintain the target.
 
-**Step Scaling** — "If CPU > 70%, add 2 instances. If CPU > 90%, add 5." More granular control.
+**Step Scaling**: "If CPU > 70%, add 2 instances. If CPU > 90%, add 5." More granular control.
 
-**Scheduled Scaling** — "At 8am on weekdays, set minimum instances to 10." For predictable traffic patterns.
+**Scheduled Scaling**: "At 8am on weekdays, set minimum instances to 10." For predictable traffic patterns.
 
 <span class="label label-ts">TypeScript</span>
 
@@ -299,17 +299,17 @@ def evaluate_scaling(metrics: ScalingMetrics, current_instances: int) -> int:
 
 ### Key Metrics to Scale On
 
-- **CPU utilization** — the most common, but can be misleading for I/O-bound workloads
-- **Request count / throughput** — better for web APIs
-- **Queue depth** — ideal for worker/consumer services (e.g., SQS queue length)
-- **Custom metrics** — response latency, error rate, business-specific metrics
+- **CPU utilization** is the most common, but can be misleading for I/O-bound workloads
+- **Request count / throughput** is better for web APIs
+- **Queue depth** is ideal for worker/consumer services (e.g., SQS queue length)
+- **Custom metrics** like response latency, error rate, or business-specific metrics
 
 <div class="callout info">
-  <strong>Cooldown periods</strong> are critical. After scaling up, wait 2–5 minutes before evaluating again. Without cooldowns, you get "thrashing" — rapidly adding and removing instances as metrics oscillate.
+  <strong>Cooldown periods</strong> are critical. After scaling up, wait 2-5 minutes before evaluating again. Without cooldowns, you get "thrashing," rapidly adding and removing instances as metrics oscillate.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Amazon.com uses predictive auto-scaling combined with scheduled scaling to handle Black Friday and Prime Day traffic. Weeks before the event, their systems analyze historical traffic patterns and pre-scale infrastructure. During the event, target-tracking policies maintain CPU utilization around 60%, while step scaling adds aggressive capacity if latency spikes. After the event, conservative scale-down policies with long cooldown periods gradually reduce capacity over hours — not minutes — to avoid premature termination during late-night shopping surges.
+  <strong>Real-World Example:</strong> Amazon.com uses predictive auto-scaling combined with scheduled scaling to handle Black Friday and Prime Day traffic. Weeks before the event, their systems analyze historical traffic patterns and pre-scale infrastructure. During the event, target-tracking policies maintain CPU utilization around 60%, while step scaling adds aggressive capacity if latency spikes. After the event, conservative scale-down policies with long cooldown periods gradually reduce capacity over hours, not minutes, to avoid premature termination during late-night shopping surges.
 </div>
 
 ## CDNs (Content Delivery Networks)
@@ -318,9 +318,9 @@ A CDN is a globally distributed network of edge servers that cache content close
 
 ### What CDNs Solve
 
-- **Latency** — a user in Tokyo shouldn't wait for a response from a server in Virginia
-- **Bandwidth** — offload static assets (images, JS, CSS) from your origin servers
-- **DDoS protection** — CDN absorbs traffic spikes at the edge before they reach your infrastructure
+- **Latency**: a user in Tokyo shouldn't wait for a response from a server in Virginia
+- **Bandwidth**: offload static assets (images, JS, CSS) from your origin servers
+- **DDoS protection**: the CDN absorbs traffic spikes at the edge before they reach your infrastructure
 
 ### How It Works
 
@@ -333,9 +333,9 @@ User in Tokyo → CDN Edge (Tokyo PoP) → [cache MISS] → Origin (us-east-1) �
 
 The hardest problem in CDNs (and computer science):
 
-- **TTL (Time-to-Live)** — content expires after N seconds. Simple but stale data is possible.
-- **Versioned URLs** — `/app.v2.3.js` instead of `/app.js`. New deploy = new URL = no stale cache. Best practice for static assets.
-- **Purge/Invalidate API** — explicitly tell the CDN to drop cached content. Use sparingly — it's slow and expensive at scale.
+- **TTL (Time-to-Live)**: content expires after N seconds. Simple but stale data is possible.
+- **Versioned URLs**: `/app.v2.3.js` instead of `/app.js`. New deploy = new URL = no stale cache. Best practice for static assets.
+- **Purge/Invalidate API**: explicitly tell the CDN to drop cached content. Use sparingly, as it's slow and expensive at scale.
 
 <span class="label label-ts">TypeScript</span>
 
@@ -367,14 +367,14 @@ CDNs are evolving beyond caching. Edge compute (Cloudflare Workers, Lambda@Edge,
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Netflix operates its own CDN called Open Connect, with thousands of servers embedded directly inside ISP networks worldwide. When you press play, the video streams from a server physically located in your ISP's data center — not from Netflix's AWS origin. Netflix pre-positions popular content at edge locations during off-peak hours based on viewing predictions. This architecture serves over 15% of global internet traffic with sub-50ms latency for most users, while dramatically reducing Netflix's bandwidth costs.
+  <strong>Real-World Example:</strong> Netflix operates its own CDN called Open Connect, with thousands of servers embedded directly inside ISP networks worldwide. When you press play, the video streams from a server physically located in your ISP's data center, not from Netflix's AWS origin. Netflix pre-positions popular content at edge locations during off-peak hours based on viewing predictions. This architecture serves over 15% of global internet traffic with sub-50ms latency for most users, while dramatically reducing Netflix's bandwidth costs.
 </div>
 
 ## Containers & Orchestration
 
 ### Why Containers?
 
-The classic problem: "It works on my machine." Containers package your application *with its entire runtime environment* — OS libraries, language runtime, dependencies — into a single portable image.
+The classic problem: "It works on my machine." Containers package your application *with its entire runtime environment*, including OS libraries, language runtime, and dependencies, into a single portable image.
 
 ```text
 Traditional:  App → depends on host OS, installed packages, env vars, file paths
@@ -383,10 +383,10 @@ Container:    App + Runtime + Deps → runs identically everywhere
 
 ### Docker Concepts
 
-- **Image** — a read-only template. Think of it as a snapshot of your application and its environment.
-- **Container** — a running instance of an image. Lightweight, isolated, disposable.
-- **Dockerfile** — the recipe that builds an image.
-- **Registry** — where images are stored (Docker Hub, ECR, GCR).
+- **Image** is a read-only template. Think of it as a snapshot of your application and its environment.
+- **Container** is a running instance of an image. Lightweight, isolated, disposable.
+- **Dockerfile** is the recipe that builds an image.
+- **Registry** is where images are stored (Docker Hub, ECR, GCR).
 
 ```dockerfile
 # Example: containerizing a Node.js API
@@ -415,11 +415,11 @@ You have 50 containers across 10 servers. How do you:
 
 Kubernetes (K8s) answers all of these. The key concepts:
 
-**Pod** — the smallest deployable unit. Usually one container, sometimes tightly coupled sidecars. Pods are ephemeral — they can be killed and recreated at any time.
+**Pod** is the smallest deployable unit. Usually one container, sometimes tightly coupled sidecars. Pods are ephemeral and can be killed and recreated at any time.
 
-**Service** — a stable network endpoint that routes traffic to a set of pods. Pods come and go; the service IP stays the same.
+**Service** is a stable network endpoint that routes traffic to a set of pods. Pods come and go; the service IP stays the same.
 
-**Deployment** — declares "I want 5 replicas of my API running version 2.1." Kubernetes makes it so, handling rolling updates and rollbacks.
+**Deployment** declares "I want 5 replicas of my API running version 2.1." Kubernetes makes it so, handling rolling updates and rollbacks.
 
 ```yaml
 # Kubernetes Deployment — declarative desired state
@@ -456,7 +456,7 @@ spec:
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Spotify migrated from a fleet of hand-managed VMs to Kubernetes over several years. They had over 150 engineering teams deploying independently, and their VM-based infrastructure couldn't keep up — provisioning took hours, and each team's deployment process was slightly different. By moving to Kubernetes, they standardized deployments across all teams using a shared platform called Backstage. Developers now deploy containerized services in minutes instead of hours, and Spotify can run thousands of microservices with consistent resource management, health checking, and auto-scaling.
+  <strong>Real-World Example:</strong> Spotify migrated from a fleet of hand-managed VMs to Kubernetes over several years. They had over 150 engineering teams deploying independently, and their VM-based infrastructure couldn't keep up. Provisioning took hours, and each team's deployment process was slightly different. By moving to Kubernetes, they standardized deployments across all teams using a shared platform called Backstage. Developers now deploy containerized services in minutes instead of hours, and Spotify can run thousands of microservices with consistent resource management, health checking, and auto-scaling.
 </div>
 
 ## Infrastructure as Code (IaC)
@@ -465,18 +465,18 @@ spec:
 
 Manually creating infrastructure (clicking through the AWS console) leads to:
 
-- **Snowflake servers** — each one is slightly different, nobody knows the full config
-- **Configuration drift** — production doesn't match staging
-- **No audit trail** — who changed what, when, and why?
-- **Not reproducible** — can you rebuild your entire environment from scratch?
+- **Snowflake servers** where each one is slightly different, and nobody knows the full config
+- **Configuration drift** where production doesn't match staging
+- **No audit trail** to show who changed what, when, and why
+- **Not reproducible** if you need to rebuild your entire environment from scratch
 
 ### The Solution
 
 Define infrastructure in code files, version-controlled alongside your application:
 
-- **Terraform** — cloud-agnostic, uses HCL (HashiCorp Configuration Language), manages state
-- **AWS CloudFormation** — AWS-specific, uses JSON/YAML, tightly integrated with AWS
-- **Pulumi** — uses real programming languages (TypeScript, Python) instead of DSLs
+- **Terraform** is cloud-agnostic, uses HCL (HashiCorp Configuration Language), and manages state
+- **AWS CloudFormation** is AWS-specific, uses JSON/YAML, and is tightly integrated with AWS
+- **Pulumi** uses real programming languages (TypeScript, Python) instead of DSLs
 
 ### Conceptual Terraform Example
 
@@ -544,22 +544,22 @@ The principle: **never modify a running server. Replace it.**
 This eliminates configuration drift entirely. Every server is identical because every server was built from the same image.
 
 <div class="callout tip">
-  <strong>Terraform workflow:</strong> <code>terraform plan</code> shows what will change. <code>terraform apply</code> makes it happen. Always review the plan before applying — especially in production.
+  <strong>Terraform workflow:</strong> <code>terraform plan</code> shows what will change. <code>terraform apply</code> makes it happen. Always review the plan before applying, especially in production.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> HashiCorp (the creators of Terraform) published a case study on how Starbucks manages over 30,000 stores' worth of cloud infrastructure using Terraform. Before IaC, spinning up infrastructure for a new store initiative took weeks of manual AWS console work and was error-prone. With Terraform modules, they codified reusable patterns for common store infrastructure — networking, databases, compute — and new environments can be provisioned in minutes via pull request. Every change is peer-reviewed, version-controlled, and automatically applied through their CI pipeline.
+  <strong>Real-World Example:</strong> HashiCorp (the creators of Terraform) published a case study on how Starbucks manages over 30,000 stores' worth of cloud infrastructure using Terraform. Before IaC, spinning up infrastructure for a new store initiative took weeks of manual AWS console work and was error-prone. With Terraform modules, they codified reusable patterns for common store infrastructure (networking, databases, compute) and new environments can be provisioned in minutes via pull request. Every change is peer-reviewed, version-controlled, and automatically applied through their CI pipeline.
 </div>
 
 ## CI/CD Pipelines
 
 CI/CD automates the path from code commit to production deployment.
 
-**CI (Continuous Integration)** — automatically build and test every commit. Catch bugs early.
+**CI (Continuous Integration)** automatically builds and tests every commit. Catches bugs early.
 
-**CD (Continuous Delivery)** — automatically deploy to staging. Production deploy requires a manual approval.
+**CD (Continuous Delivery)** automatically deploys to staging. Production deploy requires a manual approval.
 
-**CD (Continuous Deployment)** — automatically deploy all the way to production. Every passing commit goes live.
+**CD (Continuous Deployment)** automatically deploys all the way to production. Every passing commit goes live.
 
 <div class="diagram">
   <div class="layer">Developer pushes code</div>
@@ -627,32 +627,32 @@ def route_request(canary_percent: int = 5) -> str:
 ```
 
 <div class="callout">
-  <strong>Blue-green vs canary:</strong> Blue-green is all-or-nothing — you switch 100% of traffic at once. Canary is gradual — you slowly shift traffic. Canary is safer for high-traffic systems because a bug only affects a small percentage of users initially.
+  <strong>Blue-green vs canary:</strong> Blue-green is all-or-nothing: you switch 100% of traffic at once. Canary is gradual: you slowly shift traffic. Canary is safer for high-traffic systems because a bug only affects a small percentage of users initially.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Facebook (Meta) uses a canary deployment system for every code push to their billions-of-users platform. New code is first deployed to internal employees only, then to 1% of production traffic, then 10%, then 100% — with automated metrics checks at each stage. In one notable incident, a canary deployment caught a memory leak that would have crashed servers globally — the 1% canary showed memory usage climbing 5x faster than normal, and the deployment was automatically rolled back before it reached the wider user base. This system lets Facebook deploy code multiple times per day with confidence.
+  <strong>Real-World Example:</strong> Facebook (Meta) uses a canary deployment system for every code push to their billions-of-users platform. New code is first deployed to internal employees only, then to 1% of production traffic, then 10%, then 100%, with automated metrics checks at each stage. In one notable incident, a canary deployment caught a memory leak that would have crashed servers globally. The 1% canary showed memory usage climbing 5x faster than normal, and the deployment was automatically rolled back before it reached the wider user base. This system lets Facebook deploy code multiple times per day with confidence.
 </div>
 
 ## Multi-Region & Disaster Recovery
 
 ### Why Multi-Region?
 
-A single region is a single point of failure. Cloud regions do go down — and when they do, everything in that region goes with them.
+A single region is a single point of failure. Cloud regions do go down, and when they do, everything in that region goes with them.
 
 ### Active-Active vs Active-Passive
 
-**Active-Passive** — one region handles all traffic (active). A second region is on standby (passive). If the active region fails, DNS or a global load balancer switches traffic to the passive region.
+**Active-Passive**: one region handles all traffic (active). A second region is on standby (passive). If the active region fails, DNS or a global load balancer switches traffic to the passive region.
 
 - Simpler to implement
 - Passive region costs money but serves no traffic until failover
-- Data replication is one-directional (active → passive)
+- Data replication is one-directional (active to passive)
 - Failover takes minutes (DNS propagation, warming up)
 
-**Active-Active** — both regions serve live traffic simultaneously. A global load balancer routes users to the nearest region.
+**Active-Active**: both regions serve live traffic simultaneously. A global load balancer routes users to the nearest region.
 
 - Lower latency for global users
-- No failover delay — the other region is already handling traffic
+- No failover delay because the other region is already handling traffic
 - Much more complex: data must be replicated bidirectionally
 - Conflict resolution needed (what if two regions update the same record?)
 
@@ -670,9 +670,9 @@ Active-Active:
 
 Two metrics that define your disaster recovery requirements:
 
-**RPO (Recovery Point Objective)** — how much data can you afford to lose? If your RPO is 1 hour, you need backups/replication at least every hour.
+**RPO (Recovery Point Objective)**: how much data can you afford to lose? If your RPO is 1 hour, you need backups/replication at least every hour.
 
-**RTO (Recovery Time Objective)** — how long can you be down? If your RTO is 15 minutes, you need automated failover — manual intervention is too slow.
+**RTO (Recovery Time Objective)**: how long can you be down? If your RTO is 15 minutes, you need automated failover. Manual intervention is too slow.
 
 | Strategy | RPO | RTO | Cost |
 |---|---|---|---|
@@ -686,7 +686,7 @@ Two metrics that define your disaster recovery requirements:
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> During the 2017 AWS us-east-1 S3 outage, companies with single-region architectures went completely offline for hours — including major sites like Trello, Quora, and parts of Apple's ecosystem. Netflix, however, stayed online because they run an active-active multi-region architecture across three AWS regions. Their Zuul gateway automatically routes traffic away from unhealthy regions, and their data layer uses Cassandra with cross-region replication. The tradeoff is significant operational complexity and roughly 3x infrastructure cost, but for a service where every minute of downtime costs millions in lost revenue, the investment pays for itself.
+  <strong>Real-World Example:</strong> During the 2017 AWS us-east-1 S3 outage, companies with single-region architectures went completely offline for hours, including major sites like Trello, Quora, and parts of Apple's ecosystem. Netflix, however, stayed online because they run an active-active multi-region architecture across three AWS regions. Their Zuul gateway automatically routes traffic away from unhealthy regions, and their data layer uses Cassandra with cross-region replication. The tradeoff is significant operational complexity and roughly 3x infrastructure cost, but for a service where every minute of downtime costs millions in lost revenue, the investment pays for itself.
 </div>
 
 <span class="label label-ts">TypeScript</span>
@@ -1158,7 +1158,7 @@ Ansible:   "Install Nginx, deploy app v2.1, configure monitoring on all 3"
 8. **Serverless** lets you run code without managing servers. Ideal for event-driven workloads, sporadic traffic, and simple APIs. Use containers when you need persistent connections, long-running processes, or predictable high-throughput costs
 9. **Web servers and reverse proxies** sit between the internet and your application. Never expose app servers directly. Nginx handles SSL, routing, and connection management so your app doesn't have to
 10. **GitOps** uses Git as the single source of truth for deployments. Push to a repo, an operator applies the change. You get audit trails, easy rollbacks, and guaranteed consistency between your repo and your cluster
-11. **Service meshes** handle service-to-service communication (mTLS, retries, observability) transparently via sidecar proxies. Powerful but operationally complex. Most teams don't need one until they have 20+ services
+11. **Service meshes** handle service-to-service communication (mTLS, retries, observability) transparently via sidecar proxies. Useful but operationally complex. Most teams don't need one until they have 20+ services
 12. **Twelve-Factor Apps** provide a checklist for cloud-native applications. Stateless processes, config in env vars, explicit dependencies, and treating logs as streams. If you violate a factor, know why
 13. **Configuration management** (Ansible) automates server setup so every machine is identical. Terraform creates the servers, Ansible configures them. In a containerized world, the Dockerfile replaces most of what config management used to do
 

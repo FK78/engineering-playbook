@@ -1,7 +1,7 @@
 ---
 title: "Part 8: System Design Practice"
 weight: 8
-summary: "The capstone — design real systems end-to-end by combining every pattern from Parts 1–7."
+summary: "The capstone: design real systems end-to-end by combining every pattern from Parts 1-7."
 quiz:
   - question: "Design a URL shortening service like bit.ly. Walk through requirements, API design, storage, encoding, caching, and how you would scale it to handle 100M URLs."
     concepts:
@@ -27,43 +27,43 @@ case_studies:
   - title: "Design a Multi-Channel Notification System"
     category: "Greenfield Design"
     difficulty: "⭐⭐⭐"
-    scenario: "AlertHub is a platform with 10M registered users that needs a unified notification system supporting email, push notifications (iOS/Android), SMS, and in-app notifications. Users can configure preferences per channel — for example, a user might want marketing emails but only push notifications for security alerts. The system must deliver 50M notifications per day (roughly 580/sec average, with spikes to 5,000/sec during marketing campaigns). Current state: each team (marketing, security, product) has built their own notification logic, resulting in 4 separate email-sending implementations, inconsistent user preference handling, and users receiving duplicate notifications. Last month, a marketing blast sent 2M emails to users who had unsubscribed, triggering a GDPR complaint."
+    scenario: "AlertHub is a platform with 10M registered users that needs a unified notification system supporting email, push notifications (iOS/Android), SMS, and in-app notifications. Users can configure preferences per channel. For example, a user might want marketing emails but only push notifications for security alerts. The system must deliver 50M notifications per day (roughly 580/sec average, with spikes to 5,000/sec during marketing campaigns). Current state: each team (marketing, security, product) has built their own notification logic, resulting in 4 separate email-sending implementations, inconsistent user preference handling, and users receiving duplicate notifications. Last month, a marketing blast sent 2M emails to users who had unsubscribed, triggering a GDPR complaint."
     constraints: "Team: 3 backend engineers dedicated to this project, with support from a platform team. Budget: $6K/month for notification infrastructure (SES, SNS, Twilio). Timeline: MVP in 10 weeks. Must integrate with 4 existing services that currently send notifications directly. Must be GDPR-compliant (respect unsubscribe preferences, provide audit trail)."
     prompts:
       - "How do you design the preference system so that user channel preferences are always respected, even when a new notification type is added? Think about the data model for preferences and how it interacts with the delivery pipeline."
       - "What's the architecture for handling 5,000 notifications/sec during spikes without dropping messages or overwhelming downstream providers (SES has sending limits, Twilio has rate limits)?"
-      - "How do you ensure exactly-once delivery semantics — or at least prevent the duplicate notification problem? What happens when a push notification provider returns an ambiguous response?"
+      - "How do you ensure exactly-once delivery semantics, or at least prevent the duplicate notification problem? What happens when a push notification provider returns an ambiguous response?"
       - "How do you design the system so that the 4 existing services can migrate incrementally without a big-bang cutover?"
     approaches:
       - name: "Event-Driven Pipeline with Priority Queues"
         description: "Build a notification service that exposes a single API: POST /notify with a payload containing recipient, notification type, and content. The service checks user preferences, then routes to channel-specific SQS queues (email-queue, push-queue, sms-queue, in-app-queue) with priority levels (security: high, marketing: low). Channel workers consume from queues and call the appropriate provider (SES, FCM/APNs, Twilio). Each notification gets a unique idempotency key stored in DynamoDB to prevent duplicates. A dead-letter queue captures failures for retry."
-        trade_off: "Clean separation of concerns — preference checking, routing, and delivery are independent stages. Priority queues ensure security alerts aren't delayed by marketing blasts. But the system has multiple failure points (queue, worker, provider), and debugging a 'notification not received' complaint requires tracing through several components. DynamoDB idempotency adds latency to every notification."
+        trade_off: "Clean separation of concerns: preference checking, routing, and delivery are independent stages. Priority queues ensure security alerts aren't delayed by marketing blasts. But the system has multiple failure points (queue, worker, provider), and debugging a 'notification not received' complaint requires tracing through several components. DynamoDB idempotency adds latency to every notification."
       - name: "Centralized Notification Orchestrator with Fan-Out"
-        description: "Build a notification orchestrator service that receives notification requests, resolves user preferences from a Redis-cached preference store, and fans out to all applicable channels in parallel. Each channel adapter handles provider-specific logic (batching for SES, token management for push). Use Kafka as the backbone — producers publish notification events, the orchestrator consumes and fans out, and each channel adapter consumes from its own topic. Kafka's consumer groups provide natural load balancing and replay capability."
+        description: "Build a notification orchestrator service that receives notification requests, resolves user preferences from a Redis-cached preference store, and fans out to all applicable channels in parallel. Each channel adapter handles provider-specific logic (batching for SES, token management for push). Use Kafka as the backbone: producers publish notification events, the orchestrator consumes and fans out, and each channel adapter consumes from its own topic. Kafka's consumer groups provide natural load balancing and replay capability."
         trade_off: "Kafka provides durability, replay (re-process failed notifications), and natural backpressure. The orchestrator pattern gives a single place to enforce business rules (quiet hours, frequency capping, preference checks). But Kafka adds operational complexity, the orchestrator is a potential bottleneck/single point of failure, and the team must manage Kafka infrastructure (or pay for MSK). More suited for teams with Kafka experience."
       - name: "Serverless Fan-Out with Step Functions"
         description: "Use AWS Step Functions to orchestrate the notification flow: receive event → check preferences (Lambda) → fan-out to channels (parallel state) → deliver via channel-specific Lambdas (SES, SNS for push, Twilio SDK for SMS, API call for in-app). Step Functions provides built-in retry, error handling, and visual execution tracing. Store preferences in DynamoDB with a DAX cache. Use EventBridge as the entry point so existing services publish events without knowing about the notification system."
-        trade_off: "Lowest operational overhead — no servers, queues, or Kafka to manage. Step Functions' visual workflow makes debugging straightforward, and EventBridge decouples producers cleanly. But Step Functions has a per-state-transition cost that adds up at 50M notifications/day (~$150K/year for Step Functions alone), Lambda cold starts can add latency to time-sensitive notifications, and the 25,000 events/sec EventBridge limit may require batching during spikes."
+        trade_off: "Lowest operational overhead. No servers, queues, or Kafka to manage. Step Functions' visual workflow makes debugging straightforward, and EventBridge decouples producers cleanly. But Step Functions has a per-state-transition cost that adds up at 50M notifications/day (~$150K/year for Step Functions alone), Lambda cold starts can add latency to time-sensitive notifications, and the 25,000 events/sec EventBridge limit may require batching during spikes."
   - title: "Design a Real-Time Collaborative Document Editor"
     category: "Greenfield Design"
     difficulty: "⭐⭐⭐"
-    scenario: "DocSync is building a real-time collaborative document editor for enterprise teams — think Google Docs for regulated industries (healthcare, finance). Up to 50 users can edit the same document simultaneously. The editor must show each user's cursor position in real-time, handle conflicting edits without data loss, and support offline editing that syncs when the user reconnects. Documents average 50KB but can reach 2MB. The target market requires that all data stays within the customer's chosen AWS region (data residency) and that a full edit history is retained for 7 years (compliance audit trail). The company has 500 paying teams with an average of 20 users each."
+    scenario: "DocSync is building a real-time collaborative document editor for enterprise teams, similar to Google Docs but for regulated industries (healthcare, finance). Up to 50 users can edit the same document simultaneously. The editor must show each user's cursor position in real-time, handle conflicting edits without data loss, and support offline editing that syncs when the user reconnects. Documents average 50KB but can reach 2MB. The target market requires that all data stays within the customer's chosen AWS region (data residency) and that a full edit history is retained for 7 years (compliance audit trail). The company has 500 paying teams with an average of 20 users each."
     constraints: "Team: 6 engineers (2 frontend, 3 backend, 1 infra). Budget: $10K/month infrastructure. Timeline: 12 weeks to a working prototype with real-time co-editing and cursor presence. Offline support can follow in phase 2. Must support data residency (deploy per-region). Documents must be recoverable to any point in their edit history."
     prompts:
-      - "What conflict resolution strategy would you use — Operational Transformation (OT) or Conflict-free Replicated Data Types (CRDTs)? What are the practical trade-offs for a team of 6 building this in 12 weeks?"
+      - "What conflict resolution strategy would you use: Operational Transformation (OT) or Conflict-free Replicated Data Types (CRDTs)? What are the practical trade-offs for a team of 6 building this in 12 weeks?"
       - "How do you design the real-time communication layer to handle 50 concurrent editors with sub-200ms latency for cursor updates and edits? What protocol and infrastructure do you use?"
       - "How do you store the document and its edit history to support both real-time collaboration and the 7-year audit trail requirement? Think about the hot path (active editing) vs. cold path (historical audit)."
       - "How does offline editing work? When a user reconnects after editing offline for 2 hours, how do you merge their changes with the 47 edits that happened while they were away?"
     approaches:
       - name: "OT-Based with Central Server"
         description: "Use Operational Transformation with a central server that acts as the single source of truth. Each client sends operations (insert, delete) to the server, which transforms them against concurrent operations and broadcasts the result. The server maintains a linear operation log per document. Use WebSockets for real-time communication, with a Redis pub/sub layer for cursor presence. Store the current document state in PostgreSQL and the operation log in an append-only table. Archive operation logs older than 30 days to S3 for the 7-year audit trail."
-        trade_off: "OT is well-understood (Google Docs uses it) and the central server simplifies conflict resolution — there's one canonical operation order. But the server is a bottleneck and single point of failure for each document session, OT algorithms are notoriously complex to implement correctly (especially for rich text), and the central server must be in the customer's region (data residency). Scaling to many concurrent documents requires careful session routing."
+        trade_off: "OT is well-understood (Google Docs uses it) and the central server simplifies conflict resolution since there's one canonical operation order. But the server is a bottleneck and single point of failure for each document session, OT algorithms are notoriously complex to implement correctly (especially for rich text), and the central server must be in the customer's region (data residency). Scaling to many concurrent documents requires careful session routing."
       - name: "CRDT-Based with Peer-Aware Server"
-        description: "Use a CRDT library (Yjs or Automerge) for conflict-free merging. Each client maintains a local CRDT document and syncs changes via a lightweight server that relays updates between peers. CRDTs guarantee convergence without a central authority — edits can happen offline and merge automatically on reconnect. Store CRDT snapshots in S3 (one per document) and sync deltas in DynamoDB. Use WebSocket connections to the server for real-time relay, with cursor positions broadcast as ephemeral presence data."
+        description: "Use a CRDT library (Yjs or Automerge) for conflict-free merging. Each client maintains a local CRDT document and syncs changes via a lightweight server that relays updates between peers. CRDTs guarantee convergence without a central authority. Edits can happen offline and merge automatically on reconnect. Store CRDT snapshots in S3 (one per document) and sync deltas in DynamoDB. Use WebSocket connections to the server for real-time relay, with cursor positions broadcast as ephemeral presence data."
         trade_off: "CRDTs handle offline editing naturally (the core use case for phase 2) and eliminate the central server as a conflict resolution bottleneck. Libraries like Yjs are mature and handle rich text. But CRDT documents are larger than plain text (metadata overhead can be 2-10x), the 7-year audit trail is harder because CRDTs don't have a linear operation log (you'd need to snapshot periodically), and debugging merge conflicts in production is more opaque than OT's deterministic transformation."
-      - name: "Hybrid — CRDT Client + Event-Sourced Server"
+      - name: "Hybrid: CRDT Client + Event-Sourced Server"
         description: "Use Yjs on the client for local editing and conflict resolution. The server receives CRDT sync updates and also writes each change as an event to an append-only event store (DynamoDB Streams or Kafka). The event store provides the 7-year audit trail and enables point-in-time document reconstruction. Current document state is materialized into S3 on every save. WebSocket connections handle real-time sync, and a presence service (Redis) tracks cursors. For offline support, the client's Yjs document syncs its accumulated changes when reconnecting."
-        trade_off: "Combines the best of both: CRDTs handle the hard problem of conflict resolution and offline support, while event sourcing provides the audit trail and point-in-time recovery the compliance team needs. But it's the most complex architecture — the team must understand both CRDTs and event sourcing, and there are two representations of truth (CRDT state and event log) that must stay consistent. The 12-week timeline is aggressive for this approach."
+        trade_off: "Combines the best of both: CRDTs handle the hard problem of conflict resolution and offline support, while event sourcing provides the audit trail and point-in-time recovery the compliance team needs. But it's the most complex architecture. The team must understand both CRDTs and event sourcing, and there are two representations of truth (CRDT state and event log) that must stay consistent. The 12-week timeline is aggressive for this approach."
 interactive_cases:
   - title: "The Millions of Users Founder"
     type: "great-unknown"
@@ -75,10 +75,10 @@ interactive_cases:
 
 # Part 8: System Design Practice
 
-This is the capstone. Everything from Parts 1–7 — domain modelling, messaging patterns, CQRS, event sourcing, microservices, observability, resilience — converges here. We will walk through designing three real systems end-to-end, then distil the patterns into a cheat sheet you can reference in interviews and on the job.
+This is the capstone. Everything from Parts 1-7 (domain modelling, messaging patterns, CQRS, event sourcing, microservices, observability, resilience) converges here. We walk through designing three real systems end-to-end, then distil the patterns into a cheat sheet you can reference in interviews and on the job.
 
 <div class="callout info">
-This part is deliberately opinionated. Real system design has no single correct answer — but it does have a <strong>process</strong>. Follow the process, justify your decisions, and you will arrive at a defensible design every time.
+This part is deliberately opinionated. Real system design has no single correct answer, but it does have a <strong>process</strong>. Follow the process, justify your decisions, and you will arrive at a defensible design every time.
 </div>
 
 ---
@@ -87,7 +87,7 @@ This part is deliberately opinionated. Real system design has no single correct 
 
 ## 1. The System Design Process
 
-Every design — whether on a whiteboard, in a design doc, or in an interview — follows the same five-phase loop:
+Every design, whether on a whiteboard, in a design doc, or in an interview, follows the same five-phase loop:
 
 ### Phase 1: Requirements Gathering
 
@@ -104,7 +104,7 @@ Always ask clarifying questions first. The biggest mistake is jumping straight t
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> When Google designed Google Maps' real-time traffic system, they started not with architecture but with requirements: sub-second latency for route recalculation, global coverage across 220+ countries, and the ability to ingest GPS data from billions of Android devices. This requirements-first approach led them to a streaming architecture with edge-computed traffic tiles rather than a simpler batch system — a decision that would have been wrong without first quantifying the latency and scale constraints.
+  <strong>Real-World Example:</strong> When Google designed Google Maps' real-time traffic system, they started not with architecture but with requirements: sub-second latency for route recalculation, global coverage across 220+ countries, and the ability to ingest GPS data from billions of Android devices. This requirements-first approach led them to a streaming architecture with edge-computed traffic tiles rather than a simpler batch system, a decision that would have been wrong without first quantifying the latency and scale constraints.
 </div>
 
 ### Phase 2: Capacity Estimation (Back-of-Envelope)
@@ -157,7 +157,7 @@ No design is perfect. Explicitly state what you traded away and why:
 **Non-functional:**
 - Very read-heavy (100:1 read-to-write ratio)
 - Low-latency redirects (< 50 ms p99)
-- High availability — a broken redirect is a broken link
+- High availability: a broken redirect is a broken link
 - 100 M new URLs per month
 
 ### Capacity Estimation
@@ -196,7 +196,7 @@ We need short, unique keys. Options:
 | Base62 counter | No collisions, short | Requires distributed counter |
 | Pre-generated key pool | Fast, no collision | Requires key management service |
 
-**Chosen: Base62 with a distributed counter** (e.g. Twitter Snowflake-style ID → base62 encode). A 7-character base62 string gives 62⁷ ≈ 3.5 trillion unique keys — more than enough.
+**Chosen: Base62 with a distributed counter** (e.g. Twitter Snowflake-style ID, base62 encoded). A 7-character base62 string gives 62⁷ ≈ 3.5 trillion unique keys, more than enough.
 
 ```typescript
 function toBase62(id: bigint): string {
@@ -259,13 +259,13 @@ Cache policy: **Read-through with TTL**. On redirect, check cache first → on m
 
 ### Scaling Considerations
 
-- **Stateless API servers** behind a load balancer — scale horizontally.
+- **Stateless API servers** behind a load balancer. Scale horizontally.
 - **DynamoDB on-demand** scales reads/writes automatically.
 - **Redis cluster** with consistent hashing for cache sharding.
-- **Analytics decoupled** via Kafka — redirect latency is not affected by analytics writes.
+- **Analytics decoupled** via Kafka. Redirect latency is not affected by analytics writes.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Bitly handles over 10 billion link redirects per month using a read-optimized architecture strikingly similar to this design. They use a distributed key-value store for URL lookups, a Redis caching layer that serves the vast majority of redirects without hitting the database, and a separate analytics pipeline that asynchronously processes click events. Their 301 redirect latency stays under 20 ms at the 99th percentile because the hot path — cache lookup and redirect — is completely decoupled from analytics processing.
+  <strong>Real-World Example:</strong> Bitly handles over 10 billion link redirects per month using a read-optimized architecture strikingly similar to this design. They use a distributed key-value store for URL lookups, a Redis caching layer that serves the vast majority of redirects without hitting the database, and a separate analytics pipeline that asynchronously processes click events. Their 301 redirect latency stays under 20 ms at the 99th percentile because the hot path (cache lookup and redirect) is completely decoupled from analytics processing.
 </div>
 
 ---
@@ -358,7 +358,7 @@ This gives efficient queries like "last 50 messages in conversation X" as a sing
 
 ### Presence Service
 
-Presence (online/offline/typing) is **ephemeral** — use **Redis** with TTL-based heartbeats.
+Presence (online/offline/typing) is **ephemeral**. Use **Redis** with TTL-based heartbeats.
 
 ```
 SETEX  presence:{userId}  30  "online"     # expires in 30s
@@ -372,8 +372,8 @@ For a group message, the server must deliver to all online members. Two strategi
 
 | Strategy | When to Use |
 |---|---|
-| **Fan-out on write** | Small groups (< 500 members) — write a copy to each member's queue |
-| **Fan-out on read** | Large groups / channels — members pull from a shared timeline |
+| **Fan-out on write** | Small groups (< 500 members): write a copy to each member's queue |
+| **Fan-out on read** | Large groups / channels: members pull from a shared timeline |
 
 For most chat apps, **fan-out on write** for groups up to a few hundred members, with a shared channel model for very large groups.
 
@@ -410,12 +410,12 @@ For most chat apps, **fan-out on write** for groups up to a few hundred members,
 
 ### Scaling to Millions
 
-- **Connection Gateways** are stateful (hold WebSocket connections) — scale by adding nodes. Use a **service registry** so the Message Service knows which gateway holds which user.
+- **Connection Gateways** are stateful (hold WebSocket connections). Scale by adding nodes. Use a **service registry** so the Message Service knows which gateway holds which user.
 - **Kafka** bridges gateways: if User A is on Gateway-1 and User B is on Gateway-2, the message routes through Kafka.
-- **Cassandra** scales linearly by adding nodes — no single point of failure.
+- **Cassandra** scales linearly by adding nodes. No single point of failure.
 
 <div class="callout">
-The hardest part of chat at scale is not message storage — it is <strong>connection routing</strong>. Knowing which of 200 gateway nodes holds a given user's WebSocket is the core coordination problem.
+The hardest part of chat at scale is not message storage. It is <strong>connection routing</strong>. Knowing which of 200 gateway nodes holds a given user's WebSocket is the core coordination problem.
 </div>
 
 <div class="callout tip">
@@ -568,7 +568,7 @@ async function onOrderCreated(event: OrderCreated): Promise<void> {
 | Structured Logging | Part 7 | Correlation ID flows through all events |
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Shopify processes millions of orders during flash sales like Black Friday, where their peak hit 700,000 orders per minute. Their order system uses an event-driven architecture with a saga-like pattern: when a customer checks out, the order service emits domain events that trigger payment processing, inventory reservation, and shipping label generation as independent, loosely coupled steps. Compensating transactions handle failures — if payment declines after inventory is reserved, an <code>InventoryReleased</code> event frees the stock. This choreography-based approach lets each service scale independently and degrade gracefully under extreme load.
+  <strong>Real-World Example:</strong> Shopify processes millions of orders during flash sales like Black Friday, where their peak hit 700,000 orders per minute. Their order system uses an event-driven architecture with a saga-like pattern: when a customer checks out, the order service emits domain events that trigger payment processing, inventory reservation, and shipping label generation as independent, loosely coupled steps. Compensating transactions handle failures. If payment declines after inventory is reserved, an <code>InventoryReleased</code> event frees the stock. This choreography-based approach lets each service scale independently and degrade gracefully under extreme load.
 </div>
 
 ---
@@ -599,7 +599,7 @@ No pattern exists in isolation. The e-commerce design above uses <strong>seven</
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Netflix's architecture is a textbook example of composing multiple patterns. They use CQRS to separate their content catalog reads (served from a denormalized cache) from editorial writes, circuit breakers (via Hystrix, which they open-sourced) to isolate failures between their 700+ microservices, event sourcing for their A/B testing platform to replay experiment assignments, and saga orchestration for their subscription billing flow. No single pattern solves their problems — it's the deliberate combination, applied where each is justified, that lets them stream to 260 million subscribers with 99.99% availability.
+  <strong>Real-World Example:</strong> Netflix's architecture is a textbook example of composing multiple patterns. They use CQRS to separate their content catalog reads (served from a denormalized cache) from editorial writes, circuit breakers (via Hystrix, which they open-sourced) to isolate failures between their 700+ microservices, event sourcing for their A/B testing platform to replay experiment assignments, and saga orchestration for their subscription billing flow. No single pattern solves their problems. It's the deliberate combination, applied where each is justified, that lets them stream to 260 million subscribers with 99.99% availability.
 </div>
 
 ---
@@ -619,8 +619,8 @@ No pattern exists in isolation. The e-commerce design above uses <strong>seven</
 ### Communication Tips
 
 1. **Think out loud.** The interviewer is evaluating your thought process, not just the final diagram.
-2. **State assumptions explicitly.** "I'm assuming a 10:1 read-to-write ratio — does that sound right?"
-3. **Drive the conversation.** Don't wait to be asked — proactively identify the hardest sub-problems.
+2. **State assumptions explicitly.** "I'm assuming a 10:1 read-to-write ratio. Does that sound right?"
+3. **Drive the conversation.** Don't wait to be asked. Proactively identify the hardest sub-problems.
 4. **Acknowledge trade-offs.** "We gain availability here but sacrifice strong consistency."
 5. **Use concrete numbers.** "With 5 KB per record and 100 M records, that's ~500 GB" is more convincing than "a lot of data."
 
@@ -629,7 +629,7 @@ Interviewers are not looking for the "right" answer. They want to see structured
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Amazon's internal system design review process (called "operational readiness reviews") mirrors the interview framework almost exactly. Before launching any new service, teams must present capacity estimates, architecture diagrams, deep dives on failure modes, and explicit trade-off documentation. The review board challenges assumptions with questions like "what happens when your primary database fails?" and "show me the back-of-envelope math for your storage growth." This structured process is why Amazon's interview loop emphasizes the same skills — it directly reflects how they build production systems.
+  <strong>Real-World Example:</strong> Amazon's internal system design review process (called "operational readiness reviews") mirrors the interview framework almost exactly. Before launching any new service, teams must present capacity estimates, architecture diagrams, deep dives on failure modes, and explicit trade-off documentation. The review board challenges assumptions with questions like "what happens when your primary database fails?" and "show me the back-of-envelope math for your storage growth." This structured process is why Amazon's interview loop emphasizes the same skills. It directly reflects how they build production systems.
 </div>
 
 ### Common Mistakes to Avoid
@@ -637,7 +637,7 @@ Interviewers are not looking for the "right" answer. They want to see structured
 - Jumping to a solution without understanding requirements
 - Over-engineering for scale you don't need
 - Ignoring failure scenarios entirely
-- Using buzzwords without explaining why (e.g. "just use Kafka" — why Kafka?)
+- Using buzzwords without explaining why (e.g. "just use Kafka" without saying why Kafka)
 - Spending too long on one component and running out of time
 
 ---
@@ -805,7 +805,7 @@ Storage per month:    10 GB x 30 = 300 GB/month
 Storage per year:     300 GB x 12 = 3.6 TB/year
 Storage for 5 years:  3.6 TB x 5 = 18 TB
 
-With metadata overhead (timestamps, user IDs, indexes) — roughly 2x:
+With metadata overhead (timestamps, user IDs, indexes), roughly 2x:
 Total 5-year estimate: ~36 TB
 ```
 
@@ -821,14 +821,14 @@ Estimation is not about getting the exact number. It is about getting the right 
 
 1. **Follow a process.** Requirements → Estimation → High-Level → Deep Dive → Trade-offs. Every time.
 2. **Numbers matter.** Back-of-envelope math separates hand-waving from engineering. Know your powers of two and latency numbers.
-3. **Patterns compose.** Real systems use multiple patterns together — CQRS + Event Sourcing + Sagas is a common trio for complex domains.
+3. **Patterns compose.** Real systems use multiple patterns together. CQRS + Event Sourcing + Sagas is a common trio for complex domains.
 4. **Trade-offs are the point.** There is no perfect design. The value is in understanding what you gain and what you give up.
 5. **Start simple, evolve.** Don't design for 1 billion users on day one. Design for current scale with a clear path to grow.
 6. **Failure is normal.** Every design must answer: "What happens when this component goes down?" If you can't answer that, the design is incomplete.
 7. **Communication is a skill.** The best design in the world is useless if you can't explain it clearly to your team or interviewer.
 
 <div class="callout">
-System design is not about memorising solutions — it is about developing the judgement to make good trade-offs under uncertainty. The three designs in this part are starting points. Practise by redesigning them with different constraints: What if consistency matters more than availability? What if the budget is 10× smaller? What if the team is three people?
+System design is not about memorising solutions. It is about developing the judgement to make good trade-offs under uncertainty. The three designs in this part are starting points. Practise by redesigning them with different constraints: What if consistency matters more than availability? What if the budget is 10× smaller? What if the team is three people?
 </div>
 
 ---

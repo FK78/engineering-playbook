@@ -167,7 +167,7 @@ eventBus.subscribe("OrderPlaced", async (event) => {
 ```
 
 <div class="callout tip">
-  <strong>Adding a new subscriber?</strong> Just subscribe. OrderService doesn't change. That's the power of loose coupling through events.
+  <strong>Adding a new subscriber?</strong> Just subscribe. OrderService doesn't change. That's loose coupling through events.
 </div>
 
 ### Events Don't Replace APIs
@@ -230,7 +230,7 @@ interface OrderPlaced {
 ```
 
 <div class="callout info">
-  <strong>Rule of thumb:</strong> Commands can fail ("sorry, not enough stock"). Events are facts — they already happened and can't be undone, only reacted to.
+  <strong>Rule of thumb:</strong> Commands can fail ("sorry, not enough stock"). Events are facts. They already happened and can't be undone, only reacted to.
 </div>
 
 ## Message Queues vs Event Streams
@@ -253,7 +253,7 @@ Producer → [ Queue ] → Consumer
 - If you add more consumers, they **compete** for messages (work distribution)
 - Good for: background jobs, task processing, work distribution
 
-<span class="label label-py">Python</span> — conceptual:
+<span class="label label-py">Python</span>, conceptual:
 
 ```python
 # Producer
@@ -280,7 +280,7 @@ Producer → [ Stream / Log ] → Consumer A (reads at own pace)
 - Consumers can **replay** from any point
 - Good for: event sourcing, audit trails, multiple services reacting to same events
 
-<span class="label label-py">Python</span> — conceptual:
+<span class="label label-py">Python</span>, conceptual:
 
 ```python
 # Producer
@@ -714,12 +714,12 @@ const missed = await db.query(
 When you scale a service to multiple instances, how do you prevent the same message being processed twice?
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Stripe's payment processing system handles idempotency as a core design principle. Every API request accepts an idempotency key, so if a network failure causes a client to retry a payment charge, Stripe recognizes the duplicate and returns the original result instead of charging the customer twice. This pattern is critical at scale — Stripe processes billions of API requests where even a tiny percentage of duplicates would mean real money lost.
+  <strong>Real-World Example:</strong> Stripe's payment processing system handles idempotency as a core design principle. Every API request accepts an idempotency key, so if a network failure causes a client to retry a payment charge, Stripe recognizes the duplicate and returns the original result instead of charging the customer twice. This matters at scale. Stripe processes billions of API requests where even a tiny percentage of duplicates would mean real money lost.
 </div>
 
 ### Consumer Groups
 
-**Queues** handle this automatically — multiple instances of the email service compete for messages. Each message goes to exactly one instance:
+**Queues** handle this automatically. Multiple instances of the email service compete for messages, and each message goes to exactly one instance:
 
 ```text
                     ┌─ Email Worker 1  (gets message A)
@@ -739,11 +739,11 @@ Different groups read independently:
   Group "analytics" → processes the SAME events independently
 ```
 
-### Idempotency — Handling Duplicates
+### Idempotency, Handling Duplicates
 
 Even with consumer groups, a message *can* be delivered twice (worker crashes after processing but before acknowledging). Most queues offer **at-least-once** delivery, not exactly-once.
 
-The fix: make your consumers **idempotent** — safe to process the same message twice.
+The fix: make your consumers **idempotent**, meaning safe to process the same message twice.
 
 <span class="label label-ts">TypeScript</span>
 
@@ -766,20 +766,20 @@ async function handleSendEmail(event: OrderPlaced) {
 
 | Problem | Solution |
 |---|---|
-| Multiple instances of same service | Consumer group — each message goes to one instance |
-| Message delivered twice (retry/failure) | Idempotency — make processing safe to repeat |
-| Different services need same event | Different consumer groups — each gets all messages |
+| Multiple instances of same service | Consumer group, each message goes to one instance |
+| Message delivered twice (retry/failure) | Idempotency, makes processing safe to repeat |
+| Different services need same event | Different consumer groups, each gets all messages |
 
 <div class="callout info">
-  <strong>Design every consumer to be idempotent.</strong> Processing the same message twice should produce the same result as processing it once. This is a fundamental rule of distributed systems.
+  <strong>Design every consumer to be idempotent.</strong> Processing the same message twice should produce the same result as processing it once.
 </div>
 
-## CQRS — Command Query Responsibility Segregation
+## CQRS, Command Query Responsibility Segregation
 
 CQRS separates your system into two sides: one optimized for **writing** data, another optimized for **reading** data.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> A large retail banking app separated its transaction processing (writes) from account balance and statement views (reads) using CQRS. Writes went through a normalized, ACID-compliant command model that enforced business rules like overdraft limits. Reads were served from denormalized, pre-computed projections optimized for the mobile app's dashboard — showing balances, recent transactions, and spending summaries without any JOINs. This let them scale the read side to handle 50x more traffic during peak hours without impacting transaction processing.
+  <strong>Real-World Example:</strong> A large retail banking app separated its transaction processing (writes) from account balance and statement views (reads) using CQRS. Writes went through a normalized, ACID-compliant command model that enforced business rules like overdraft limits. Reads were served from denormalized, pre-computed projections optimized for the mobile app's dashboard, showing balances, recent transactions, and spending summaries without any JOINs. This let them scale the read side to handle 50x more traffic during peak hours without impacting transaction processing.
 </div>
 
 ### Why?
@@ -810,7 +810,7 @@ async getOrderSummaries(customerId: string) {
 }
 ```
 
-With CQRS, the read side is **pre-computed** — the work happens once when data changes, not every time someone reads it.
+With CQRS, the read side is **pre-computed**. The work happens once when data changes, not every time someone reads it.
 
 ### How It Works
 
@@ -829,15 +829,15 @@ WITH CQRS:
   └─────────┘                    └──────────────────┘
 ```
 
-The **write side** uses normalized tables (good for consistency and business rules). The **read side** uses a flat, denormalized table that's updated when events happen — so queries never need JOINs.
+The **write side** uses normalized tables (good for consistency and business rules). The **read side** uses a flat, denormalized table that's updated when events happen, so queries never need JOINs.
 
-### Normalized vs Denormalized — The Progression
+### Normalized vs Denormalized, The Progression
 
-Before any design, data starts as one big flat table with everything repeated — Alice's name appears on every row. If she changes her email, you update dozens of rows and risk inconsistency.
+Before any design, data starts as one big flat table with everything repeated. Alice's name appears on every row. If she changes her email, you update dozens of rows and risk inconsistency.
 
 **Normalized** splits this into separate tables with no repetition. Alice's email exists once. But reading "Alice's orders with product names" now requires JOINing 3-4 tables.
 
-**Denormalized** intentionally flattens it back into a read-optimized table — but it's derived from the normalized source, kept in sync via events.
+**Denormalized** intentionally flattens it back into a read-optimized table, but it's derived from the normalized source, kept in sync via events.
 
 | State | What it looks like | Trade-off |
 |---|---|---|
@@ -846,7 +846,7 @@ Before any design, data starts as one big flat table with everything repeated �
 | **Denormalized** | Flat tables built from normalized data | Redundant data, but fast reads |
 
 <div class="callout info">
-  <strong>Denormalized ≠ unnormalized.</strong> Denormalization is a deliberate choice — the normalized tables remain the source of truth (write side), and the denormalized table is a pre-computed view (read side) kept in sync via events.
+  <strong>Denormalized ≠ unnormalized.</strong> Denormalization is a deliberate choice. The normalized tables remain the source of truth (write side), and the denormalized table is a pre-computed view (read side) kept in sync via events.
 </div>
 
 ### Read Tables in Practice
@@ -863,7 +863,7 @@ READ SIDE (separate tables, one per view):
   customer_activity_feed → admin "Recent Activity" view
 ```
 
-Each table is shaped exactly for its query — no JOINs at read time. All are updated by event handlers listening to the same events:
+Each table is shaped exactly for its query, with no JOINs at read time. All are updated by event handlers listening to the same events:
 
 <span class="label label-ts">TypeScript</span>
 
@@ -887,9 +887,9 @@ eventBus.subscribe("OrderPlaced", async (event) => {
   <strong>The read side doesn't have to be the same database.</strong> You could write to Postgres, read from Elasticsearch for search, and read from Redis for dashboards. Each read store is optimized for its specific query pattern.
 </div>
 
-### Eventual Consistency — The Latency Trade-off
+### Eventual Consistency, The Latency Trade-off
 
-There's always a delay between writing data and the read model catching up. That's **eventual consistency** — typically milliseconds to a few seconds.
+There's always a delay between writing data and the read model catching up. That's **eventual consistency**, typically milliseconds to a few seconds.
 
 In practice, handle it with simple UX patterns:
 
@@ -912,7 +912,7 @@ router.post("/orders", async (req, res) => {
   <strong>For most apps, the lag is invisible.</strong> By the time a user clicks to another page, the read model has caught up. Only high-frequency trading or real-time collaboration apps need to worry about sub-second consistency.
 </div>
 
-### Polyglot Persistence — Different Stores for Different Queries
+### Polyglot Persistence, Different Stores for Different Queries
 
 Different query patterns need different database types. The write side stays as one normalized database; the read side can fan out to multiple stores:
 
@@ -958,12 +958,12 @@ eventBus.subscribe("OrderPlaced", async (event) => {
 | Recommendation engine | Needs graph traversal | Neo4j |
 
 <div class="callout">
-  <strong>You only add separate stores when you have a specific performance problem.</strong> For most apps, one Postgres database with a few denormalized read tables is enough. Don't add Elasticsearch on day one — add it when search becomes a bottleneck.
+  <strong>You only add separate stores when you have a specific performance problem.</strong> For most apps, one Postgres database with a few denormalized read tables is enough. Don't add Elasticsearch on day one. Add it when search becomes a bottleneck.
 </div>
 
 ### Managing Multiple Read Stores
 
-The write side doesn't run scripts or poll for changes — it just publishes events. Each read store has its own **consumer service** that runs continuously, listening for events and updating its store:
+The write side doesn't run scripts or poll for changes. It just publishes events. Each read store has its own **consumer service** that runs continuously, listening for events and updating its store:
 
 <span class="label label-ts">TypeScript</span>
 
@@ -1000,13 +1000,13 @@ Each consumer is a separate service responsible for its own store. The write sid
 | Consumer crashes | Kafka remembers the last processed offset. Consumer restarts where it left off. |
 | Consumer falls behind | Catches up at its own pace. Read model is temporarily stale but self-heals. |
 | Rebuild a read store from scratch | Replay all events from the beginning of the log. |
-| Add a new read store later | Deploy a new consumer, start from the beginning — nothing else changes. |
+| Add a new read store later | Deploy a new consumer, start from the beginning. Nothing else changes. |
 
 <div class="callout tip">
   <strong>For simpler setups</strong> (one Postgres for both write and read tables), you don't need Kafka or separate services. The event handler can live in the same app: <code>eventBus.on("OrderPlaced", async (e) => { await db.query("INSERT INTO order_summaries ...") })</code>. Scale up to Kafka when you actually need separate databases.
 </div>
 
-<span class="label label-ts">TypeScript</span> — Write side:
+<span class="label label-ts">TypeScript</span>, Write side:
 
 ```typescript
 // Command handler — validates and writes
@@ -1030,7 +1030,7 @@ class PlaceOrderHandler {
 }
 ```
 
-<span class="label label-ts">TypeScript</span> — Read side:
+<span class="label label-ts">TypeScript</span>, Read side:
 
 ```typescript
 // Event handler — updates the read model
@@ -1065,7 +1065,7 @@ CQRS doesn't require events, Kafka, or separate databases. At its simplest, it's
 | **3. Separate read stores** | Events sync to Elasticsearch/Redis/etc | Yes | Yes | Yes |
 | **4. Event sourcing + CQRS** | Events are source of truth, read models are projections | Yes | Yes | Yes |
 
-<span class="label label-ts">TypeScript</span> — Level 1 (simplest CQRS, no events):
+<span class="label label-ts">TypeScript</span>, Level 1 (simplest CQRS, no events):
 
 ```typescript
 // Write: domain model with business rules
@@ -1090,7 +1090,7 @@ class OrderQueryService {
 // That's CQRS. Two code paths. No events, no Kafka, one database.
 ```
 
-Compare with the non-CQRS version — one service does everything:
+Compare with the non-CQRS version, where one service does everything:
 
 ```typescript
 // Without CQRS — reads and writes in one service
@@ -1118,7 +1118,7 @@ class OrderService {
 ```
 
 <div class="callout info">
-  <strong>The non-CQRS service works fine until reads get complex.</strong> When you have 4+ read methods with complex JOINs that don't use the domain model, the service becomes half business logic, half reporting. CQRS Level 1 just splits them into two classes — write service stays focused on rules, query service stays focused on fast reads.
+  <strong>The non-CQRS service works fine until reads get complex.</strong> When you have 4+ read methods with complex JOINs that don't use the domain model, the service becomes half business logic, half reporting. CQRS Level 1 just splits them into two classes. The write service stays focused on rules, the query service stays focused on fast reads.
 </div>
 
 <div class="callout tip">
@@ -1129,8 +1129,8 @@ class OrderService {
 
 | Benefit | Cost |
 |---|---|
-| Read and write models optimized independently | More complexity — two models to maintain |
-| Read side can scale separately | Eventual consistency — read model lags behind writes |
+| Read and write models optimized independently | More complexity, two models to maintain |
+| Read side can scale separately | Eventual consistency, read model lags behind writes |
 | Queries are fast (pre-computed) | Need event infrastructure to sync models |
 | Write side stays clean (no query concerns) | Harder to reason about than simple CRUD |
 
@@ -1143,7 +1143,7 @@ class OrderService {
 Instead of storing the **current state** of an entity, you store the **sequence of events** that led to that state. The event log is the source of truth.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> LMAX Exchange, a financial trading platform, uses event sourcing to store every trade, order placement, and cancellation as an immutable event. This gives them a complete audit trail required by financial regulators and the ability to reconstruct the exact state of any account at any point in time. When they needed to investigate a disputed trade, they replayed events up to that millisecond to see exactly what happened — something impossible with a traditional database that only stores current state.
+  <strong>Real-World Example:</strong> LMAX Exchange, a financial trading platform, uses event sourcing to store every trade, order placement, and cancellation as an immutable event. This gives them a complete audit trail required by financial regulators and the ability to reconstruct the exact state of any account at any point in time. When they needed to investigate a disputed trade, they replayed events up to that millisecond to see exactly what happened. This is impossible with a traditional database that only stores current state.
 </div>
 
 ### Traditional vs Event Sourced
@@ -1176,7 +1176,7 @@ Full history. You can reconstruct the order at any point in time.
 <details>
 <summary><strong>🔍 Dry Run: Watch Event Sourcing Step by Step</strong></summary>
 
-**Step 1 — User creates an order:**
+**Step 1: User creates an order:**
 
 | # | Event | Data |
 |---|---|---|
@@ -1184,7 +1184,7 @@ Full history. You can reconstruct the order at any point in time.
 
 State after replay → `Order { status: "draft", items: [], total: 0 }`
 
-**Step 2 — Adds a Widget (£29.99 × 2):**
+**Step 2: Adds a Widget (£29.99 × 2):**
 
 | # | Event | Data |
 |---|---|---|
@@ -1193,7 +1193,7 @@ State after replay → `Order { status: "draft", items: [], total: 0 }`
 
 State after replay → `Order { status: "draft", items: [widget×2], total: 0 }`
 
-**Step 3 — Adds a Gadget (£15.00 × 1):**
+**Step 3: Adds a Gadget (£15.00 × 1):**
 
 | # | Event | Data |
 |---|---|---|
@@ -1203,7 +1203,7 @@ State after replay → `Order { status: "draft", items: [widget×2], total: 0 }`
 
 State after replay → `Order { status: "draft", items: [widget×2, gadget×1], total: 0 }`
 
-**Step 4 — Submits the order:**
+**Step 4: Submits the order:**
 
 | # | Event | Data |
 |---|---|---|
@@ -1214,7 +1214,7 @@ State after replay → `Order { status: "draft", items: [widget×2, gadget×1], 
 
 State after replay → `Order { status: "submitted", items: [widget×2, gadget×1], total: 74.98 }`
 
-**Step 5 — Payment taken:**
+**Step 5: Payment taken:**
 
 | # | Event | Data |
 |---|---|---|
@@ -1223,7 +1223,7 @@ State after replay → `Order { status: "submitted", items: [widget×2, gadget×
 
 State after replay → `Order { status: "paid", total: 74.98 }`
 
-**Step 6 — Shipped:**
+**Step 6: Shipped:**
 
 | # | Event | Data |
 |---|---|---|
@@ -1232,7 +1232,7 @@ State after replay → `Order { status: "paid", total: 74.98 }`
 
 State after replay → `Order { status: "shipped", total: 74.98 }`
 
-**The power — replay to any point:**
+**The key: replay to any point:**
 
 ```typescript
 // "What did the order look like before payment?"
@@ -1246,7 +1246,7 @@ Order.fromEvents("order-123", events.slice(0, 2));
 // → Order { status: "draft", items: [widget×2] }
 ```
 
-**Traditional DB at this point:** One row — `{ status: "shipped", total: 74.98 }`. No idea what happened in between.
+**Traditional DB at this point:** One row, `{ status: "shipped", total: 74.98 }`. No idea what happened in between.
 
 </details>
 
@@ -1381,7 +1381,7 @@ class PlaceOrderHandler {
 }
 ```
 
-### Implementation — Replaying Events
+### Implementation: Replaying Events
 
 To load an order, fetch its events and replay them:
 
@@ -1507,7 +1507,7 @@ If step 3 fails:
 
 ### Two Approaches
 
-**Choreography** — services react to events, no central coordinator:
+**Choreography**: services react to events, no central coordinator:
 
 ```text
 OrderService                    PaymentService              InventoryService
@@ -1558,7 +1558,7 @@ eventBus.subscribe("StockReserveFailed", async (event) => {
 });
 ```
 
-**Orchestration** — a central coordinator manages the steps:
+**Orchestration**: a central coordinator manages the steps:
 
 <span class="label label-ts">TypeScript</span>
 
@@ -1765,13 +1765,13 @@ const status = await readDb.query(
 
 ## Key Takeaways
 
-1. **Event-driven architecture** decouples services — producers don't know about consumers
+1. **Event-driven architecture** decouples services. Producers don't know about consumers
 2. **Commands** = "do this" (one handler). **Events** = "this happened" (many listeners)
 3. **Message queues** = one consumer per message (tasks). **Event streams** = multiple consumers, messages persist (events)
 4. **CQRS** = separate read and write models when they have different requirements
 5. **Event sourcing** = store events, not state. Full audit trail, reconstruct any point in time
 6. **Sagas** = manage distributed transactions with compensating actions
-7. These patterns add complexity — use them when the problem demands it, not by default
+7. These patterns add complexity. Use them when the problem demands it, not by default
 
 ## Check Your Understanding
 

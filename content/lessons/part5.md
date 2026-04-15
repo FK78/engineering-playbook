@@ -117,15 +117,15 @@ interactive_cases:
 
 Two concepts that are often confused but serve completely different purposes.
 
-**Authentication** (AuthN) = "Who are you?" — verifying identity.
-**Authorization** (AuthZ) = "What can you do?" — verifying permissions.
+**Authentication** (AuthN) = "Who are you?" Verifying identity.
+**Authorization** (AuthZ) = "What can you do?" Verifying permissions.
 
 <div class="diagram">
   <div class="layer">User presents credentials (username + password, token, certificate)</div>
   <div class="arrow">↓</div>
-  <div class="layer"><strong>Authentication</strong> — Is this person who they claim to be?</div>
+  <div class="layer"><strong>Authentication</strong>: Is this person who they claim to be?</div>
   <div class="arrow">↓</div>
-  <div class="layer"><strong>Authorization</strong> — Is this verified person allowed to do this action?</div>
+  <div class="layer"><strong>Authorization</strong>: Is this verified person allowed to do this action?</div>
   <div class="arrow">↓</div>
   <div class="layer">Access granted or denied</div>
 </div>
@@ -142,7 +142,7 @@ Two concepts that are often confused but serve completely different purposes.
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> GitHub uses multiple authentication mechanisms for different use cases. Users log in via OAuth through the browser, while developers use Personal Access Tokens (PATs) for CLI and API access. Deploy keys provide read-only repo access for CI/CD systems. This layered approach lets GitHub enforce the right level of identity verification for each context — interactive users get MFA prompts, while automated systems use scoped, revocable tokens.
+  <strong>Real-World Example:</strong> GitHub uses multiple authentication mechanisms for different use cases. Users log in via OAuth through the browser, while developers use Personal Access Tokens (PATs) for CLI and API access. Deploy keys provide read-only repo access for CI/CD systems. This layered approach lets GitHub enforce the right level of identity verification for each context. Interactive users get MFA prompts, while automated systems use scoped, revocable tokens.
 </div>
 
 ## Authentication Patterns
@@ -169,9 +169,9 @@ Client                          Server
 
 ### Token-Based Authentication (JWT)
 
-Stateless. The server issues a signed token containing claims. The client sends it with every request. The server validates the signature — no session store needed.
+Stateless. The server issues a signed token containing claims. The client sends it with every request. The server validates the signature, no session store needed.
 
-<span class="label label-ts">TypeScript</span> — JWT creation and validation:
+<span class="label label-ts">TypeScript</span>, JWT creation and validation:
 
 ```typescript
 import jwt from "jsonwebtoken";
@@ -197,7 +197,7 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
 }
 ```
 
-<span class="label label-py">Python</span> — JWT creation and validation:
+<span class="label label-py">Python</span>, JWT creation and validation:
 
 ```python
 import jwt
@@ -219,7 +219,7 @@ def validate_token(token: str) -> dict:
 ```
 
 <div class="callout tip">
-  <strong>JWT tradeoff:</strong> JWTs are stateless and scalable, but you can't revoke them before expiry without maintaining a blocklist — which reintroduces state. Keep expiry times short and use refresh tokens.
+  <strong>JWT tradeoff:</strong> JWTs are stateless and scalable, but you can't revoke them before expiry without maintaining a blocklist, which reintroduces state. Keep expiry times short and use refresh tokens.
 </div>
 
 ### API Keys
@@ -241,14 +241,14 @@ X-API-Key: sk_live_abc123def456
 | API Keys | No | Service-to-service, developer APIs |
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Slack uses token-based authentication (OAuth tokens) for its API platform, allowing third-party apps to act on behalf of users. When a developer installs a Slack app, the OAuth flow issues a bot token scoped to specific permissions (e.g., posting messages, reading channels). Slack chose tokens over sessions because their API serves millions of distributed integrations — stateless JWT-style tokens scale without requiring a centralized session store.
+  <strong>Real-World Example:</strong> Slack uses token-based authentication (OAuth tokens) for its API platform, allowing third-party apps to act on behalf of users. When a developer installs a Slack app, the OAuth flow issues a bot token scoped to specific permissions (e.g., posting messages, reading channels). Slack chose tokens over sessions because their API serves millions of distributed integrations. Stateless JWT-style tokens scale without requiring a centralized session store.
 </div>
 
 ## OAuth 2.0 & OpenID Connect
 
-**OAuth 2.0** is an authorization framework — it lets a third-party app access resources on behalf of a user without sharing their password.
+**OAuth 2.0** is an authorization framework. It lets a third-party app access resources on behalf of a user without sharing their password.
 
-**OpenID Connect (OIDC)** is an identity layer on top of OAuth 2.0 — it adds authentication (who the user is) via an ID token.
+**OpenID Connect (OIDC)** is an identity layer on top of OAuth 2.0. It adds authentication (who the user is) via an ID token.
 
 ### Authorization Code Flow
 
@@ -286,10 +286,10 @@ POST /token
 
 | Flow | Use Case |
 |---|---|
-| Authorization Code | Web apps, mobile apps — user is involved |
-| Authorization Code + PKCE | SPAs, mobile/native apps — public clients that can't store a secret |
-| Client Credentials | Service-to-service — no user context |
-| Device Code | Smart TVs, CLI tools — limited input devices |
+| Authorization Code | Web apps, mobile apps, user is involved |
+| Authorization Code + PKCE | SPAs, mobile/native apps, public clients that can't store a secret |
+| Client Credentials | Service-to-service, no user context |
+| Device Code | Smart TVs, CLI tools, limited input devices |
 
 <div class="callout info">
   <strong>PKCE</strong> (Proof Key for Code Exchange) protects the authorization code flow for public clients. The app generates a random <code>code_verifier</code>, sends a hash (<code>code_challenge</code>) in the authorize request, and proves possession by sending the original verifier when exchanging the code. This prevents interception attacks.
@@ -395,9 +395,9 @@ function evaluate(ctx: AccessContext): boolean {
 
 <div class="callout tip">
   <strong>Choosing a pattern:</strong><br>
-  • <strong>RBAC</strong> — simple apps with clear role hierarchies (admin, editor, viewer)<br>
-  • <strong>ABAC</strong> — complex rules based on multiple attributes (department, time, classification)<br>
-  • <strong>Policy-based</strong> — when authorization rules change frequently or need to be managed externally (e.g., OPA, Cedar)
+  • <strong>RBAC</strong>: simple apps with clear role hierarchies (admin, editor, viewer)<br>
+  • <strong>ABAC</strong>: complex rules based on multiple attributes (department, time, classification)<br>
+  • <strong>Policy-based</strong>: when authorization rules change frequently or need to be managed externally (e.g., OPA, Cedar)
 </div>
 
 <div class="callout tip">
@@ -410,7 +410,7 @@ function evaluate(ctx: AccessContext): boolean {
 
 Prevents abuse and ensures fair usage. Without it, a single client can overwhelm your service.
 
-<span class="label label-ts">TypeScript</span> — sliding window rate limiter middleware:
+<span class="label label-ts">TypeScript</span>, sliding window rate limiter middleware:
 
 ```typescript
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
@@ -439,7 +439,7 @@ function rateLimit(maxRequests: number, windowMs: number) {
 app.use(rateLimit(100, 15 * 60 * 1000));
 ```
 
-<span class="label label-py">Python</span> — rate limiter concept:
+<span class="label label-py">Python</span>, rate limiter concept:
 
 ```python
 import time
@@ -513,7 +513,7 @@ All traffic must be encrypted in transit. There is no exception.
 - Keep certificates valid and auto-renewed (Let's Encrypt, ACM)
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> In 2016, a startup called Mailgun experienced a massive bot attack where automated scripts hammered their email-sending API with thousands of requests per second, exhausting resources and degrading service for legitimate customers. They responded by implementing tiered rate limiting using a token bucket algorithm — free-tier accounts got strict limits, while paid accounts received higher thresholds. They also added API key-based identification so they could throttle abusive clients individually without affecting others.
+  <strong>Real-World Example:</strong> In 2016, a startup called Mailgun experienced a massive bot attack where automated scripts hammered their email-sending API with thousands of requests per second, exhausting resources and degrading service for legitimate customers. They responded by implementing tiered rate limiting using a token bucket algorithm. Free-tier accounts got strict limits, while paid accounts received higher thresholds. They also added API key-based identification so they could throttle abusive clients individually without affecting others.
 </div>
 
 ## Zero Trust Architecture
@@ -523,9 +523,9 @@ Zero Trust: **"Never trust, always verify."**
 
 ### Core Principles
 
-1. **Verify explicitly** — authenticate and authorize every request, regardless of network location
-2. **Least privilege access** — grant minimum permissions needed, just-in-time and just-enough
-3. **Assume breach** — design as if attackers are already inside your network
+1. **Verify explicitly**: authenticate and authorize every request, regardless of network location
+2. **Least privilege access**: grant minimum permissions needed, just-in-time and just-enough
+3. **Assume breach**: design as if attackers are already inside your network
 
 <div class="diagram">
   <div class="layer"><strong>Traditional (Castle & Moat)</strong><br>Firewall protects the perimeter. Once inside, everything is trusted.</div>
@@ -551,14 +551,14 @@ Instead of one flat network, divide into small segments. Each service can only c
 
 <div class="callout tip">
   <strong>Zero Trust in practice:</strong><br>
-  • mTLS between services (mutual TLS — both sides present certificates)<br>
+  • mTLS between services (mutual TLS, both sides present certificates)<br>
   • Service mesh (Istio, Linkerd) for automatic mTLS and policy enforcement<br>
-  • Short-lived credentials — no long-lived API keys between services<br>
+  • Short-lived credentials, no long-lived API keys between services<br>
   • Identity-aware proxies (BeyondCorp model)
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Google pioneered Zero Trust with their BeyondCorp initiative, launched after the 2009 Operation Aurora attacks. They eliminated the traditional corporate VPN entirely — employees access internal applications from any network (coffee shop, home, office) through an identity-aware proxy that evaluates every request based on user identity, device health, and context. Access decisions consider factors like whether the device has up-to-date patches and whether the request location is unusual. This model proved so effective that Google published it as a framework, and it became the blueprint for the industry's shift toward Zero Trust.
+  <strong>Real-World Example:</strong> Google pioneered Zero Trust with their BeyondCorp initiative, launched after the 2009 Operation Aurora attacks. They eliminated the traditional corporate VPN entirely. Employees access internal applications from any network (coffee shop, home, office) through an identity-aware proxy that evaluates every request based on user identity, device health, and context. Access decisions consider factors like whether the device has up-to-date patches and whether the request location is unusual. This model proved so effective that Google published it as a framework, and it became the blueprint for the industry's shift toward Zero Trust.
 </div>
 
 ## Secrets Management
@@ -625,10 +625,10 @@ db_password = get_secret("prod/db-password")
 
 <div class="callout info">
   <strong>Secrets management checklist:</strong><br>
-  • Never commit secrets to version control — add <code>.env</code> to <code>.gitignore</code><br>
+  • Never commit secrets to version control. Add <code>.env</code> to <code>.gitignore</code><br>
   • Rotate secrets regularly and automate rotation<br>
   • Use a vault (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault)<br>
-  • Audit access to secrets — who accessed what and when<br>
+  • Audit access to secrets: who accessed what and when<br>
   • Use different secrets per environment (dev, staging, prod)
 </div>
 
@@ -720,7 +720,7 @@ res.cookie("session", token, {
 </div>
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> In 2017, Equifax suffered one of the largest data breaches in history, exposing 147 million records. The root cause was an unpatched Apache Struts vulnerability (a form of injection attack) combined with an expired SSL certificate on their intrusion detection system, which meant the breach went undetected for 76 days. This catastrophic failure illustrates why defense in depth matters — a single vulnerability wouldn't have been as devastating if monitoring, patching, and network segmentation had all been functioning properly.
+  <strong>Real-World Example:</strong> In 2017, Equifax suffered one of the largest data breaches in history, exposing 147 million records. The root cause was an unpatched Apache Struts vulnerability (a form of injection attack) combined with an expired SSL certificate on their intrusion detection system, which meant the breach went undetected for 76 days. This catastrophic failure illustrates why defense in depth matters. A single vulnerability wouldn't have been as devastating if monitoring, patching, and network segmentation had all been functioning properly.
 </div>
 
 
@@ -842,16 +842,16 @@ Both are still fine for non-security purposes like checksums (verifying a file d
 
 ## Key Takeaways
 
-1. **Authentication ≠ Authorization** — verify identity first, then check permissions
-2. **Use JWTs for stateless APIs**, sessions for traditional web apps — understand the tradeoffs
+1. **Authentication ≠ Authorization**: verify identity first, then check permissions
+2. **Use JWTs for stateless APIs**, sessions for traditional web apps. Understand the tradeoffs
 3. **OAuth 2.0 authorization code flow** for user-facing apps, **client credentials** for machine-to-machine
 4. **RBAC for simple apps**, ABAC or policy-based for complex permission models
-5. **Rate limit, validate input, configure CORS** — API security is non-negotiable
-6. **Zero Trust: never trust, always verify** — even inside your own network
-7. **Never hardcode secrets** — use environment variables at minimum, a secrets vault in production
-8. **Parameterized queries prevent SQL injection** — never concatenate user input into queries
-9. **Defense in depth** — layer multiple security controls, assume any single one can fail
-10. **Hash passwords with bcrypt/scrypt/argon2** — never use MD5 or SHA for passwords. These algorithms are slow on purpose to resist brute-force attacks
+5. **Rate limit, validate input, configure CORS**: API security is non-negotiable
+6. **Zero Trust: never trust, always verify**, even inside your own network
+7. **Never hardcode secrets**: use environment variables at minimum, a secrets vault in production
+8. **Parameterized queries prevent SQL injection**: never concatenate user input into queries
+9. **Defense in depth**: layer multiple security controls, assume any single one can fail
+10. **Hash passwords with bcrypt/scrypt/argon2**: never use MD5 or SHA for passwords. These algorithms are slow on purpose to resist brute-force attacks
 
 ## Check Your Understanding
 

@@ -34,7 +34,7 @@ quiz:
     answer: "An aggregate root is the entry point to a cluster of related entities. All changes go through the root to maintain consistency. The Repository saves/loads the entire aggregate as a unit."
   - q: "Your company has a 'Product' in the catalog, warehouse, and pricing systems. Should they all share one Product class?"
     concepts:
-      - label: "no — different bounded contexts"
+      - label: "no, different bounded contexts"
         terms: ["no", "bounded context", "different context", "separate context", "different meaning", "different model", "own model"]
       - label: "different needs per context"
         terms: ["different field", "different propert", "different need", "catalog has", "warehouse has", "pricing has", "each system", "each context"]
@@ -58,19 +58,19 @@ case_studies:
     constraints: "8 engineers (3 backend, 3 frontend, 2 IoT firmware), 50 existing REST endpoints with external partner integrations, IoT devices cannot be updated once deployed, API must remain backward-compatible"
     prompts:
       - "Should you adopt GraphQL, create Backend-for-Frontend (BFF) services, or add field selection to your REST API? What factors drive this decision?"
-      - "The IoT devices have severe constraints — tiny payloads, no ability to update firmware. How does this affect your API strategy?"
+      - "The IoT devices have severe constraints: tiny payloads, no ability to update firmware. How does this affect your API strategy?"
       - "How do you handle the transition without breaking the 50 existing endpoints that external partners depend on?"
       - "What are the operational costs of each approach? Consider monitoring, debugging, and team cognitive load."
     approaches:
       - name: "GraphQL Gateway"
         description: "Introduce a GraphQL layer in front of the existing REST services. Web and mobile clients query GraphQL and request exactly the fields they need. IoT devices continue using a dedicated lightweight REST endpoint with minimal payloads. Keep existing REST endpoints for external partners."
-        trade_off: "Solves over-fetching elegantly for web and mobile, and the schema serves as living documentation. But adds a new technology to the stack, requires training the team, and GraphQL caching is harder than REST caching. IoT still needs a separate solution."
+        trade_off: "Solves over-fetching cleanly for web and mobile, and the schema serves as living documentation. But adds a new technology to the stack, requires training the team, and GraphQL caching is harder than REST caching. IoT still needs a separate solution."
       - name: "Backend-for-Frontend (BFF) Pattern"
-        description: "Create three thin API layers — one for web, one for mobile, one for IoT — each tailored to its client's needs. Each BFF calls the same underlying services but shapes the response differently. Web BFF returns rich nested data, mobile BFF returns compact payloads, IoT BFF returns binary-encoded minimal responses."
+        description: "Create three thin API layers, one for web, one for mobile, one for IoT, each tailored to its client's needs. Each BFF calls the same underlying services but shapes the response differently. Web BFF returns rich nested data, mobile BFF returns compact payloads, IoT BFF returns binary-encoded minimal responses."
         trade_off: "Each client gets exactly what it needs with no compromise. But you now maintain three API surfaces instead of one. Changes to underlying services may require updates to all three BFFs. Works best when each client has a dedicated team."
       - name: "Sparse Fieldsets on Existing REST"
         description: "Add a ?fields=name,status query parameter to existing REST endpoints, letting clients specify which fields to return. Add a ?include=history,analytics parameter for nested resources. IoT devices use fields to get minimal payloads. No new infrastructure needed."
-        trade_off: "Lowest effort — extends existing REST API without new services or technologies. But field selection logic adds complexity to every endpoint, doesn't solve deeply nested data needs well, and IoT payload size depends on JSON overhead (consider MessagePack for IoT)."
+        trade_off: "Lowest effort. Extends existing REST API without new services or technologies. But field selection logic adds complexity to every endpoint, doesn't solve deeply nested data needs well, and IoT payload size depends on JSON overhead (consider MessagePack for IoT)."
   - title: "The Product That Means Everything"
     category: "Architecture Decision"
     difficulty: "⭐⭐⭐"
@@ -84,10 +84,10 @@ case_studies:
     approaches:
       - name: "Separate Tables, Shared Database"
         description: "Split the 85-column products table into three domain-specific tables (catalog_products, warehouse_products, pricing_products) in the same database, linked by product_id. Each team owns their table's schema. Create views that reconstruct the old table shape for backward compatibility with downstream consumers."
-        trade_off: "Lowest risk — no new infrastructure, referential integrity via foreign keys, and views provide backward compatibility. But teams still share a database, so deployment coupling remains. A bad migration by one team can still lock the shared database."
+        trade_off: "Lowest risk: no new infrastructure, referential integrity via foreign keys, and views provide backward compatibility. But teams still share a database, so deployment coupling remains. A bad migration by one team can still lock the shared database."
       - name: "Separate Services with Event Sync"
         description: "Extract each context into its own service with its own database. Catalog Service, Warehouse Service, and Pricing Service each own their data. When Catalog updates a product name, it publishes a ProductNameChanged event that Warehouse and Pricing consume to update their local copies."
-        trade_off: "Full team autonomy — each team deploys independently with no schema conflicts. But introduces eventual consistency (Warehouse might show an old product name briefly), requires event infrastructure (Kafka/SQS), and cross-context queries become harder. Migrating 15 downstream consumers is a major effort."
+        trade_off: "Full team autonomy: each team deploys independently with no schema conflicts. But introduces eventual consistency (Warehouse might show an old product name briefly), requires event infrastructure (Kafka/SQS), and cross-context queries become harder. Migrating 15 downstream consumers is a major effort."
       - name: "Modular Monolith with Internal APIs"
         description: "Keep one deployable unit but enforce strict module boundaries. Each team's code lives in a separate module with a defined internal API. The Product model is split into three module-specific models. Cross-module access goes through service interfaces, never direct table access. A shared kernel contains only product_id and name."
         trade_off: "Eliminates merge conflicts and enforces boundaries without distributed systems complexity. But requires tooling to enforce module boundaries (linter rules, architecture tests). Doesn't solve the single-database bottleneck if one team's queries are slow."
@@ -95,8 +95,8 @@ interactive_cases:
   - title: "The Marketplace API Brief"
     type: "parade-of-facts"
     difficulty: "⭐⭐"
-    brief: "A product manager dumps a 500-word brief about building a new API for a marketplace. It's packed with details — user counts, revenue targets, tech stack preferences, competitor analysis, team size, office locations, and the CEO's favourite programming language. Your job is to cut through the noise and identify what actually matters architecturally."
-    opening: "Hey! So excited to kick this off. Here's the brief for our new marketplace API. We have 50,000 buyers, 3,000 sellers, and 200 admin users. Revenue target is $2M ARR by Q4. The CEO loves Rust but the team knows TypeScript. Our main competitor uses Go with gRPC. We have teams in London and Berlin — 12 engineers total. We need buyers to browse products, sellers to manage inventory, and admins to handle disputes. Oh, and we're planning to open the API to third-party developers next year. The Product model is used by all three teams but they each need different fields. What do you think?"
+    brief: "A product manager dumps a 500-word brief about building a new API for a marketplace. It's packed with details: user counts, revenue targets, tech stack preferences, competitor analysis, team size, office locations, and the CEO's favourite programming language. Your job is to cut through the noise and identify what actually matters architecturally."
+    opening: "Hey! So excited to kick this off. Here's the brief for our new marketplace API. We have 50,000 buyers, 3,000 sellers, and 200 admin users. Revenue target is $2M ARR by Q4. The CEO loves Rust but the team knows TypeScript. Our main competitor uses Go with gRPC. We have teams in London and Berlin, 12 engineers total. We need buyers to browse products, sellers to manage inventory, and admins to handle disputes. Oh, and we're planning to open the API to third-party developers next year. The Product model is used by all three teams but they each need different fields. What do you think?"
     key_issues: "Different data needs per client type (BFF/GraphQL decision), Product bounded context conflict, public API versioning strategy"
     red_herrings: "CEO's language preference, office locations, competitor's tech stack, revenue targets"
 ---
@@ -105,7 +105,7 @@ interactive_cases:
 
 ## REST Fundamentals
 
-**REST** (Representational State Transfer) is an architectural style for APIs. It's not a protocol — it's a set of constraints that, when followed, make APIs predictable and scalable.
+**REST** (Representational State Transfer) is an architectural style for APIs. It's not a protocol. It's a set of constraints that, when followed, make APIs predictable and scalable.
 
 <div class="callout tip">
   <strong>Real-World Example:</strong> Stripe's REST API is widely considered the gold standard for API design. They use consistent resource-based URLs (/v1/charges, /v1/customers), proper HTTP verbs, predictable status codes, and idempotency keys for safe retries. Their API is so well-designed that "make it like Stripe's API" has become shorthand in the industry for good REST practices. It demonstrates how following REST constraints rigorously creates an API that developers love.
@@ -113,10 +113,10 @@ interactive_cases:
 
 ### Core Principles
 
-- **Resources** — everything is a resource identified by a URL: `/orders/123`, `/users/456`
-- **HTTP verbs** — the action is expressed by the method, not the URL
-- **Stateless** — each request contains everything the server needs. No server-side session.
-- **Representations** — resources can have multiple formats (JSON, XML). The client gets a *representation*, not the resource itself.
+- **Resources**: everything is a resource identified by a URL: `/orders/123`, `/users/456`
+- **HTTP verbs**: the action is expressed by the method, not the URL
+- **Stateless**: each request contains everything the server needs. No server-side session.
+- **Representations**: resources can have multiple formats (JSON, XML). The client gets a *representation*, not the resource itself.
 
 ### HTTP Verbs
 
@@ -129,7 +129,7 @@ interactive_cases:
 | **DELETE** | Remove a resource | Yes | `DELETE /orders/123` |
 
 <div class="callout info">
-  <strong>Idempotent</strong> means calling it multiple times produces the same result. <code>DELETE /orders/123</code> twice? Same outcome — the order is gone. <code>POST /orders</code> twice? Two orders created. That's why POST isn't idempotent.
+  <strong>Idempotent</strong> means calling it multiple times produces the same result. <code>DELETE /orders/123</code> twice? Same outcome, the order is gone. <code>POST /orders</code> twice? Two orders created. That's why POST isn't idempotent.
 </div>
 
 ### Status Codes
@@ -144,7 +144,7 @@ interactive_cases:
 ## REST in Practice
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> Twilio built their entire business on a clean REST API. Their URL structure (/Accounts/{sid}/Messages) uses nouns and hierarchy, POST creates messages, GET retrieves them, and every response includes consistent pagination and error formats. This predictability meant developers could integrate Twilio in hours, not days — proving that practical REST design directly impacts developer adoption and business growth.
+  <strong>Real-World Example:</strong> Twilio built their entire business on a clean REST API. Their URL structure (/Accounts/{sid}/Messages) uses nouns and hierarchy, POST creates messages, GET retrieves them, and every response includes consistent pagination and error formats. This predictability meant developers could integrate Twilio in hours, not days, proving that practical REST design directly impacts developer adoption and business growth.
 </div>
 
 ### URL Design
@@ -168,7 +168,7 @@ GET    /getAllPendingOrders             # filtering baked into path
 
 ### A Practical REST API
 
-<span class="label label-ts">TypeScript</span> — Express example:
+<span class="label label-ts">TypeScript</span>, Express example:
 
 ```typescript
 const router = express.Router();
@@ -210,7 +210,7 @@ router.delete("/orders/:id", async (req, res) => {
 });
 ```
 
-<span class="label label-py">Python</span> — FastAPI example:
+<span class="label label-py">Python</span>, FastAPI example:
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -256,9 +256,9 @@ Never return unbounded lists. Common approaches:
 
 APIs evolve. Common strategies:
 
-- **URL path:** `/v1/orders`, `/v2/orders` — simple, explicit
-- **Header:** `Accept: application/vnd.myapp.v2+json` — cleaner URLs, harder to discover
-- **Query param:** `/orders?version=2` — easy but messy
+- **URL path:** `/v1/orders`, `/v2/orders`. Simple, explicit.
+- **Header:** `Accept: application/vnd.myapp.v2+json`. Cleaner URLs, harder to discover.
+- **Query param:** `/orders?version=2`. Easy but messy.
 
 <div class="callout info">
   <strong>Most teams use URL path versioning.</strong> It's the simplest to implement, test, and document.
@@ -269,7 +269,7 @@ APIs evolve. Common strategies:
 A query language for APIs. Instead of the server deciding what data to return, the **client specifies exactly what it needs**.
 
 <div class="callout tip">
-  <strong>Real-World Example:</strong> GitHub switched from REST (v3) to GraphQL (v4) for their public API. Their REST API required multiple round trips to fetch a pull request with its reviews, comments, and status checks — sometimes 5+ requests. With GraphQL, clients fetch all of that in a single query. GitHub reported that mobile clients saw significant performance improvements because they could request only the fields they needed instead of downloading full resource representations.
+  <strong>Real-World Example:</strong> GitHub switched from REST (v3) to GraphQL (v4) for their public API. Their REST API required multiple round trips to fetch a pull request with its reviews, comments, and status checks, sometimes 5+ requests. With GraphQL, clients fetch all of that in a single query. GitHub reported that mobile clients saw significant performance improvements because they could request only the fields they needed instead of downloading full resource representations.
 </div>
 
 ### How It Works
@@ -295,7 +295,7 @@ query {
 }
 ```
 
-Server returns exactly that shape — no more, no less:
+Server returns exactly that shape, no more, no less:
 
 ```json
 {
@@ -364,11 +364,11 @@ const resolvers = {
 
 ### Key Concepts
 
-- **Query** — read data (like GET)
-- **Mutation** — write data (like POST/PUT/DELETE)
-- **Subscription** — real-time updates via WebSocket
-- **Resolver** — function that fetches data for a field
-- **Schema** — the contract defining all types and operations
+- **Query**: read data (like GET)
+- **Mutation**: write data (like POST/PUT/DELETE)
+- **Subscription**: real-time updates via WebSocket
+- **Resolver**: function that fetches data for a field
+- **Schema**: the contract defining all types and operations
 
 ## REST vs GraphQL
 
@@ -745,7 +745,7 @@ class Money {
 
 ### Aggregate
 
-A cluster of entities and value objects treated as a single unit. The **aggregate root** is the entry point — all changes go through it.
+A cluster of entities and value objects treated as a single unit. The **aggregate root** is the entry point. All changes go through it.
 
 ```typescript
 // Order is the aggregate root
@@ -820,7 +820,7 @@ A bounded context is a boundary within which a domain model is defined and consi
 | **Anti-Corruption Layer** | Translate between contexts at the boundary | Integrating with legacy or external systems |
 | **Events** | One context publishes events, others subscribe | Loose coupling between contexts |
 
-<span class="label label-ts">TypeScript</span> — Anti-Corruption Layer example:
+<span class="label label-ts">TypeScript</span>, Anti-Corruption Layer example:
 
 ```typescript
 class ShippingCustomerAdapter {
@@ -839,12 +839,12 @@ class ShippingCustomerAdapter {
 
 ## Key Takeaways
 
-1. **REST** — resources + HTTP verbs + status codes. Stateless, cacheable, well-understood.
-2. **GraphQL** — client-driven queries. Solves over/under-fetching. Higher complexity.
-3. **Choose based on your needs** — REST for simple APIs, GraphQL for complex client requirements. They can coexist.
-4. **Domain modeling** — structure code around business concepts (entities, value objects, aggregates).
+1. **REST**: resources + HTTP verbs + status codes. Stateless, cacheable, well-understood.
+2. **GraphQL**: client-driven queries. Solves over/under-fetching. Higher complexity.
+3. **Choose based on your needs.** REST for simple APIs, GraphQL for complex client requirements. They can coexist.
+4. **Domain modeling**: structure code around business concepts (entities, value objects, aggregates).
 5. **Business rules belong on domain objects**, not scattered across services.
-6. **Bounded contexts** — the same concept can have different models in different parts of the system.
+6. **Bounded contexts**: the same concept can have different models in different parts of the system.
 
 ## Check Your Understanding
 
