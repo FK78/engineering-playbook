@@ -23,7 +23,7 @@ except ImportError:
     print("Install openai: pip3 install openai")
     sys.exit(1)
 
-VOICE = "cedar"  # Options: alloy, ash, coral, echo, fable, nova, onyx, sage, shimmer
+VOICE = "nova"  # Options: alloy, ash, coral, echo, fable, nova, onyx, sage, shimmer
 MODEL = "gpt-4o-mini-tts"  # gpt-4o-mini-tts (best), tts-1, or tts-1-hd
 AUDIO_DIR = Path("static/audio")
 AUDIO_FORMAT = "opus"
