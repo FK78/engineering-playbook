@@ -23,9 +23,11 @@ except ImportError:
     print("Install openai: pip3 install openai")
     sys.exit(1)
 
-VOICE = "nova"  # Options: alloy, echo, fable, onyx, nova, shimmer
+VOICE = "cedar"  # Options: alloy, ash, coral, echo, fable, nova, onyx, sage, shimmer
 MODEL = "gpt-4o-mini-tts"  # gpt-4o-mini-tts (best), tts-1, or tts-1-hd
 AUDIO_DIR = Path("static/audio")
+AUDIO_FORMAT = "opus"
+AUDIO_EXT = ".ogg"  # .ogg for browser compatibility with opus codec
 
 
 def strip_front_matter(text: str) -> str:
@@ -143,7 +145,7 @@ def generate_audio(text: str, output_path: Path, client: OpenAI, voice: str = VO
     MAX_CHARS = 4096
 
     if len(text) <= MAX_CHARS:
-        response = client.audio.speech.create(model=model, voice=voice, input=text)
+        response = client.audio.speech.create(model=model, voice=voice, input=text, response_format=AUDIO_FORMAT)
         with open(output_path, "wb") as f:
             for chunk in response.iter_bytes():
                 f.write(chunk)
@@ -164,8 +166,8 @@ def generate_audio(text: str, output_path: Path, client: OpenAI, voice: str = VO
         # Generate each chunk and concatenate
         temp_files = []
         for i, chunk in enumerate(chunks):
-            temp_path = output_path.with_suffix(f".part{i}.mp3")
-            response = client.audio.speech.create(model=model, voice=voice, input=chunk)
+            temp_path = output_path.with_suffix(f".part{i}.ogg")
+            response = client.audio.speech.create(model=model, voice=voice, input=chunk, response_format=AUDIO_FORMAT)
             with open(temp_path, "wb") as f:
                 for audio_chunk in response.iter_bytes():
                     f.write(audio_chunk)
@@ -205,7 +207,7 @@ def process_file(md_path: Path, section_filter: str = None, voice: str = VOICE, 
             continue
 
         slug = slugify(f"{section.get('parent', '')}-{title}" if section.get("parent") else title)
-        output_path = output_dir / f"{slug}.mp3"
+        output_path = output_dir / f"{slug}{AUDIO_EXT}"
 
         cleaned = clean_for_speech(section["content"])
         if len(cleaned) < 50:
@@ -217,12 +219,12 @@ def process_file(md_path: Path, section_filter: str = None, voice: str = VOICE, 
 
         if output_path.exists() and not section_filter:
             print(f"  Skipping '{title}' (already exists)")
-            manifest.append({"title": title, "parent": section.get("parent"), "file": f"{slug}.mp3"})
+            manifest.append({"title": title, "parent": section.get("parent"), "file": f"{slug}{AUDIO_EXT}"})
             continue
 
         print(f"  Generating '{title}' ({len(speech_text)} chars)...")
         generate_audio(speech_text, output_path, client, voice, model)
-        manifest.append({"title": title, "parent": section.get("parent"), "file": f"{slug}.mp3"})
+        manifest.append({"title": title, "parent": section.get("parent"), "file": f"{slug}{AUDIO_EXT}"})
 
     # Save manifest
     manifest_path = output_dir / "manifest.json"
