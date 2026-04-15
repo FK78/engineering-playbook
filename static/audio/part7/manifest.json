@@ -1,0 +1,137 @@
+[
+  {
+    "title": "Introduction",
+    "parent": null,
+    "file": "introduction.ogg"
+  },
+  {
+    "title": "1. Database Selection",
+    "parent": null,
+    "file": "1-database-selection.ogg"
+  },
+  {
+    "title": "2. Caching Strategies",
+    "parent": null,
+    "file": "2-caching-strategies.ogg"
+  },
+  {
+    "title": "3. Cache Invalidation",
+    "parent": null,
+    "file": "3-cache-invalidation.ogg"
+  },
+  {
+    "title": "Strategies",
+    "parent": "3. Cache Invalidation",
+    "file": "3-cache-invalidation-strategies.ogg"
+  },
+  {
+    "title": "4. Sharding",
+    "parent": null,
+    "file": "4-sharding.ogg"
+  },
+  {
+    "title": "Core Concepts",
+    "parent": "4. Sharding",
+    "file": "4-sharding-core-concepts.ogg"
+  },
+  {
+    "title": "5. Replication",
+    "parent": null,
+    "file": "5-replication.ogg"
+  },
+  {
+    "title": "Replication Topologies",
+    "parent": "5. Replication",
+    "file": "5-replication-replication-topologies.ogg"
+  },
+  {
+    "title": "6. Data Pipelines",
+    "parent": null,
+    "file": "6-data-pipelines.ogg"
+  },
+  {
+    "title": "ETL vs ELT",
+    "parent": "6. Data Pipelines",
+    "file": "6-data-pipelines-etl-vs-elt.ogg"
+  },
+  {
+    "title": "Batch vs Streaming",
+    "parent": "6. Data Pipelines",
+    "file": "6-data-pipelines-batch-vs-streaming.ogg"
+  },
+  {
+    "title": "7. Consistency Patterns in Practice",
+    "parent": null,
+    "file": "7-consistency-patterns-in-practice.ogg"
+  },
+  {
+    "title": "Read-Your-Writes",
+    "parent": "7. Consistency Patterns in Practice",
+    "file": "7-consistency-patterns-in-practice-read-your-writes.ogg"
+  },
+  {
+    "title": "Monotonic Reads",
+    "parent": "7. Consistency Patterns in Practice",
+    "file": "7-consistency-patterns-in-practice-monotonic-reads.ogg"
+  },
+  {
+    "title": "8. ACID vs BASE",
+    "parent": null,
+    "file": "8-acid-vs-base.ogg"
+  },
+  {
+    "title": "ACID",
+    "parent": "8. ACID vs BASE",
+    "file": "8-acid-vs-base-acid.ogg"
+  },
+  {
+    "title": "BASE",
+    "parent": "8. ACID vs BASE",
+    "file": "8-acid-vs-base-base.ogg"
+  },
+  {
+    "title": "How They Relate to CAP",
+    "parent": "8. ACID vs BASE",
+    "file": "8-acid-vs-base-how-they-relate-to-cap.ogg"
+  },
+  {
+    "title": "9. The N+1 Problem",
+    "parent": null,
+    "file": "9-the-n1-problem.ogg"
+  },
+  {
+    "title": "How to Detect N+1 Queries",
+    "parent": "9. The N+1 Problem",
+    "file": "9-the-n1-problem-how-to-detect-n1-queries.ogg"
+  },
+  {
+    "title": "10. ORMs: Benefits and Trade-offs",
+    "parent": null,
+    "file": "10-orms-benefits-and-trade-offs.ogg"
+  },
+  {
+    "title": "Popular ORMs",
+    "parent": "10. ORMs: Benefits and Trade-offs",
+    "file": "10-orms-benefits-and-trade-offs-popular-orms.ogg"
+  },
+  {
+    "title": "Benefits",
+    "parent": "10. ORMs: Benefits and Trade-offs",
+    "file": "10-orms-benefits-and-trade-offs-benefits.ogg"
+  },
+  {
+    "title": "Trade-offs",
+    "parent": "10. ORMs: Benefits and Trade-offs",
+    "file": "10-orms-benefits-and-trade-offs-trade-offs.ogg"
+  },
+  {
+    "title": "When to Use Raw SQL vs ORM",
+    "parent": "10. ORMs: Benefits and Trade-offs",
+    "file": "10-orms-benefits-and-trade-offs-when-to-use-raw-sql-vs-orm.ogg"
+  },
+  {
+    "title": "11. Key Takeaways",
+    "parent": null,
+    "file": "11-key-takeaways.ogg"
+  }
+]
